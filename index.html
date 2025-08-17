@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oppskrift Administrator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .datalist-input::-webkit-calendar-picker-indicator {
+            display: none;
+        }
+        textarea {
+            resize: vertical;
+        }
+        .recipe-item {
+            transition: all 0.2s ease;
+        }
+        .recipe-item:hover {
+            transform: translateX(4px);
+        }
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        /* Custom scrollbar */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #d4d4d4;
+            border-radius: 3px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        /* Notification animations */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        .notification {
+            animation: slideIn 0.3s ease-out;
+        }
+        .notification.hiding {
+            animation: slideOut 0.3s ease-out;
+        }
+        /* Dropdown menu */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            margin-top: 0.5rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        /* Image preview */
+        .image-preview {
+            max-height: 200px;
+            object-fit: cover;
+            object-position: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
+        <!-- Notifications will be inserted here -->
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">Oppskrift Administrator</h1>
+                <div class="flex gap-2">
+                    <button onclick="copyTemplate()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        📋 Kopier Mal
+                    </button>
+                    
+                    <div class="relative">
+                        <button onclick="toggleExportMenu()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            📤 Eksporter ▼
+                        </button>
+                        <div id="exportMenu" class="dropdown-menu">
+                            <button onclick="exportDatabase('file')" class="w-full text-left px-4 py-2 hover:bg-gray-100 border-b">
+                                💾 Eksporter til fil
+                            </button>
+                            <button onclick="exportDatabase('clipboard')" class="w-full text-left px-4 py-2 hover:bg-gray-100">
+                                📋 Kopier til utklippstavle
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importDatabase(event)">
+                    <button onclick="document.getElementById('importFile').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        📥 Importer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Recipe List -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-700">Oppskrifter</h2>
+                        <span class="text-sm text-gray-500" id="recipeCount">0 oppskrifter</span>
+                    </div>
+                    <div id="recipeList" class="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto custom-scroll">
+                        <!-- Recipe items will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipe Form -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <!-- JSON Paste Area -->
+                    <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Lim inn JSON oppskrift (valgfritt)
+                        </label>
+                        <textarea id="jsonPaste" rows="3" placeholder='Lim inn JSON objekt her, f.eks: {"title": "Pasta", "servings": "4 porsjoner"...}'
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"></textarea>
+                        <button onclick="parseJsonInput()" class="mt-2 px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
+                            Parse JSON → Fyll skjema
+                        </button>
+                    </div>
+
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Oppskrift Detaljer</h2>
+                    
+                    <form id="recipeForm" class="space-y-4">
+                        <!-- Hidden ID field -->
+                        <input type="hidden" id="recipeId">
+                        
+                        <!-- Title -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tittel *</label>
+                            <input type="text" id="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Provider and Servings -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Oppskrift fra</label>
+                                <input type="text" id="provider" placeholder="F.eks: Bestemor" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Porsjoner *</label>
+                                <input type="text" id="servings" required placeholder="F.eks: 4 porsjoner" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- Category, Meal, Cuisine -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                <input type="text" id="category" list="categoryList" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <datalist id="categoryList"></datalist>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Måltid</label>
+                                <input type="text" id="meal" list="mealList" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <datalist id="mealList"></datalist>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Kjøkken</label>
+                                <input type="text" id="cuisine" list="cuisineList" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <datalist id="cuisineList"></datalist>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
+                            <textarea id="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+
+                        <!-- Image URL -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Bilde URL 
+                                <a href="https://unsplash.com" target="_blank" class="text-xs text-purple-600 hover:underline ml-2">
+                                    Finn bilder på Unsplash →
+                                </a>
+                            </label>
+                            <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
+                                   oninput="updateImagePreview()"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            
+                            <!-- Image Preview -->
+                            <div id="imagePreviewContainer" class="hidden mt-3">
+                                <div class="border rounded-lg overflow-hidden bg-gray-50">
+                                    <img id="imagePreview" src="" alt="Forhåndsvisning" class="image-preview w-full">
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Bildeforhåndsvisning</p>
+                            </div>
+                        </div>
+
+                        <!-- Ingredients -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Ingredienser 
+                                <span class="text-xs text-gray-500">(én per linje, eller skill grupper med "---Gruppenavn---")</span>
+                            </label>
+                            <textarea id="ingredients" rows="6" placeholder="500 g mel&#10;2 dl melk&#10;---Fyll---&#10;100 g sukker&#10;2 ss kanel" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"></textarea>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Fremgangsmåte 
+                                <span class="text-xs text-gray-500">(én instruksjon per linje)</span>
+                            </label>
+                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;Elt deigen i 10 minutter" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex justify-between pt-4 border-t">
+                            <button type="button" onclick="clearForm()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                                ↻ Ny oppskrift
+                            </button>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="previewRecipe()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                                    👁 Forhåndsvis
+                                </button>
+                                <button type="button" onclick="deleteRecipe()" id="deleteBtn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                    🗑 Slett
+                                </button>
+                                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                    💾 Lagre
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-3xl w-full relative">
+            <!-- Fixed close button -->
+            <button onclick="closePreview()" class="fixed top-8 right-8 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-50">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <div class="modal-content p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 pr-12">Forhåndsvisning</h2>
+                <div id="previewContent" class="space-y-4">
+                    <!-- Preview content will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Database
+        let recipeDatabase = {};
+        
+        // Default suggestions
+        const defaultCategories = ['Brød', 'Bakverk', 'Kake', 'Grateng', 'Gryte', 'Kjeks', 'Grøt', 'Suppe', 'Salat', 'Kjøttkaker'];
+        const defaultMeals = ['Frokost', 'Lunsj', 'Middag', 'Dessert', 'Snacks', 'Tilbehør'];
+        const defaultCuisines = ['Norsk', 'Italiensk', 'Skandinavisk', 'Internasjonal', 'Asiatisk', 'Meksikansk', 'Fransk'];
+
+        // Recipe template for AI systems
+        function getRecipeTemplate() {
+            return {
+                title: "Oppskriftens navn (PÅKREVD)",
+                servings: "Antall porsjoner, f.eks: '4 porsjoner' eller '12 stk.' (PÅKREVD)",
+                provider: "Hvem oppskriften kommer fra (VALGFRITT, f.eks: 'Bestemor')",
+                category: "Kategori (VALGFRITT, f.eks: 'Brød', 'Kake', 'Grateng', 'Suppe')",
+                meal: "Måltidstype (VALGFRITT, f.eks: 'Frokost', 'Middag', 'Dessert', 'Snacks')",
+                cuisine: "Kjøkkentype (VALGFRITT, f.eks: 'Norsk', 'Italiensk', 'Asiatisk')",
+                description: "Beskrivelse av retten - smak, tekstur, når den passer, tips (VALGFRITT men anbefalt)",
+                ingredients: [
+                    "// For enkle oppskrifter, bruk array av strenger:",
+                    "500 g hvetemel",
+                    "2 dl melk",
+                    "// ELLER for grupperte ingredienser, bruk objekter:",
+                    {
+                        group: "Deig",
+                        items: ["500 g mel", "2 dl melk"]
+                    },
+                    {
+                        group: "Fyll",
+                        items: ["100 g sukker", "2 ss kanel"]
+                    }
+                ],
+                instructions: [
+                    "Første steg i oppskriften",
+                    "Andre steg med klare instruksjoner",
+                    "Tredje steg",
+                    "Fortsett med alle nødvendige steg",
+                    "Siste steg og serveringsforslag"
+                ],
+                image: "URL til bilde (VALGFRITT, helst fra Unsplash med format: https://images.unsplash.com/photo-XXX?w=800&h=600&fit=crop)"
+            };
+        }
+
+        // Update image preview
+        function updateImagePreview() {
+            const imageUrl = document.getElementById('image').value.trim();
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const previewImg = document.getElementById('imagePreview');
+            
+            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+                previewImg.src = imageUrl;
+                previewContainer.classList.remove('hidden');
+                
+                // Handle image load error
+                previewImg.onerror = function() {
+                    previewContainer.classList.add('hidden');
+                };
+            } else {
+                previewContainer.classList.add('hidden');
+            }
+        }
+
+        // Copy template to clipboard
+        async function copyTemplate() {
+            const template = getRecipeTemplate();
+            const templateJson = JSON.stringify(template, null, 2);
+            
+            try {
+                await navigator.clipboard.writeText(templateJson);
+                showNotification('Oppskriftmal kopiert til utklippstavlen! Bruk den med AI-systemer.', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = templateJson;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showNotification('Oppskriftmal kopiert til utklippstavlen!', 'success');
+            }
+        }
+
+        // Toggle export menu
+        function toggleExportMenu() {
+            const menu = document.getElementById('exportMenu');
+            menu.classList.toggle('show');
+            
+            // Close menu when clicking outside
+            if (menu.classList.contains('show')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeExportMenu);
+                }, 10);
+            }
+        }
+
+        // Close export menu
+        function closeExportMenu(e) {
+            const menu = document.getElementById('exportMenu');
+            const button = event.target.closest('button');
+            if (!button || !button.textContent.includes('Eksporter')) {
+                menu.classList.remove('show');
+                document.removeEventListener('click', closeExportMenu);
+            }
+        }
+
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-green-500' : 
+                           type === 'error' ? 'bg-red-500' : 
+                           type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500';
+            
+            const icon = type === 'success' ? '✓' : 
+                        type === 'error' ? '✕' : 
+                        type === 'warning' ? '⚠' : 'ℹ';
+            
+            notification.className = `notification pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white ${bgColor} max-w-md`;
+            notification.innerHTML = `
+                <span class="text-xl">${icon}</span>
+                <span class="flex-1">${message}</span>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('hiding');
+                setTimeout(() => {
+                    container.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Initialize
+        function init() {
+            loadDatabase();
+            renderRecipeList();
+            updateDataLists();
+            
+            // Form submit handler
+            document.getElementById('recipeForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveRecipe();
+            });
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return 'recipe_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Load database from localStorage
+        function loadDatabase() {
+            const stored = localStorage.getItem('recipeDatabase');
+            if (stored) {
+                recipeDatabase = JSON.parse(stored);
+            }
+        }
+
+        // Save database to localStorage
+        function saveDatabase() {
+            localStorage.setItem('recipeDatabase', JSON.stringify(recipeDatabase));
+        }
+
+        // Update datalist suggestions
+        function updateDataLists() {
+            const categories = new Set(defaultCategories);
+            const meals = new Set(defaultMeals);
+            const cuisines = new Set(defaultCuisines);
+            
+            // Add existing values from database
+            Object.values(recipeDatabase).forEach(recipe => {
+                if (recipe.category) categories.add(recipe.category);
+                if (recipe.meal) meals.add(recipe.meal);
+                if (recipe.cuisine) cuisines.add(recipe.cuisine);
+            });
+            
+            // Update datalists
+            document.getElementById('categoryList').innerHTML = Array.from(categories).map(c => `<option value="${c}">`).join('');
+            document.getElementById('mealList').innerHTML = Array.from(meals).map(m => `<option value="${m}">`).join('');
+            document.getElementById('cuisineList').innerHTML = Array.from(cuisines).map(c => `<option value="${c}">`).join('');
+        }
+
+        // Parse JSON input (handles both strict JSON and JavaScript object notation)
+        function parseJsonInput() {
+            const jsonInput = document.getElementById('jsonPaste').value.trim();
+            if (!jsonInput) return;
+            
+            try {
+                let data;
+                
+                // First try parsing as strict JSON
+                try {
+                    data = JSON.parse(jsonInput);
+                } catch (e) {
+                    // If that fails, try using eval (safe here since it's user's own input)
+                    try {
+                        data = eval('(' + jsonInput + ')');
+                    } catch (evalError) {
+                        // If eval also fails, try one more approach with regex
+                        const quotedJson = jsonInput
+                            .replace(/'/g, '"') // Replace single quotes with double
+                            .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":') // Quote keys
+                            .replace(/:\s*"([^"]*)"([,}])/g, (match, value, ending) => {
+                                // Keep strings as they are
+                                return ':"' + value + '"' + ending;
+                            });
+                        
+                        data = JSON.parse(quotedJson);
+                    }
+                }
+                
+                populateForm(data);
+                document.getElementById('jsonPaste').value = '';
+                showNotification('JSON parsket! Gjennomgå og lagre oppskriften.', 'success');
+            } catch (e) {
+                showNotification('Ugyldig format: ' + e.message, 'error');
+            }
+        }
+
+        // Populate form with recipe data
+        function populateForm(recipe) {
+            document.getElementById('recipeId').value = recipe.id || '';
+            document.getElementById('title').value = recipe.title || '';
+            document.getElementById('provider').value = recipe.provider || '';
+            document.getElementById('servings').value = recipe.servings || '';
+            document.getElementById('category').value = recipe.category || '';
+            document.getElementById('meal').value = recipe.meal || '';
+            document.getElementById('cuisine').value = recipe.cuisine || '';
+            document.getElementById('description').value = recipe.description || '';
+            document.getElementById('image').value = recipe.image || '';
+            
+            // Update image preview
+            updateImagePreview();
+            
+            // Handle ingredients
+            if (recipe.ingredients) {
+                let ingredientText = '';
+                if (Array.isArray(recipe.ingredients)) {
+                    recipe.ingredients.forEach(item => {
+                        if (typeof item === 'string') {
+                            // Skip comment lines from template
+                            if (!item.startsWith('//')) {
+                                ingredientText += item + '\n';
+                            }
+                        } else if (item.group && item.items) {
+                            ingredientText += `---${item.group}---\n`;
+                            ingredientText += item.items.join('\n') + '\n';
+                        }
+                    });
+                }
+                document.getElementById('ingredients').value = ingredientText.trim();
+            }
+            
+            // Handle instructions
+            if (recipe.instructions && Array.isArray(recipe.instructions)) {
+                document.getElementById('instructions').value = recipe.instructions.join('\n');
+            }
+            
+            // Show delete button if editing
+            if (recipe.id) {
+                document.getElementById('deleteBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('deleteBtn').classList.add('hidden');
+            }
+        }
+
+        // Parse ingredients text to structured format
+        function parseIngredients(text) {
+            const lines = text.trim().split('\n').filter(line => line.trim());
+            const ingredients = [];
+            let currentGroup = null;
+            
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.startsWith('---') && line.endsWith('---')) {
+                    // Group header
+                    const groupName = line.slice(3, -3).trim();
+                    currentGroup = { group: groupName, items: [] };
+                    ingredients.push(currentGroup);
+                } else if (line) {
+                    // Regular ingredient
+                    if (currentGroup) {
+                        currentGroup.items.push(line);
+                    } else {
+                        ingredients.push(line);
+                    }
+                }
+            });
+            
+            // If all ingredients are strings, return simple array
+            if (ingredients.every(item => typeof item === 'string')) {
+                return ingredients;
+            }
+            
+            // Filter out empty groups
+            return ingredients.filter(item => {
+                if (typeof item === 'string') return true;
+                return item.items && item.items.length > 0;
+            });
+        }
+
+        // Parse instructions text
+        function parseInstructions(text) {
+            return text.trim().split('\n').filter(line => line.trim()).map(line => line.trim());
+        }
+
+        // Save recipe
+        function saveRecipe() {
+            const id = document.getElementById('recipeId').value || generateId();
+            
+            const recipe = {
+                id: id,
+                title: document.getElementById('title').value.trim(),
+                servings: document.getElementById('servings').value.trim()
+            };
+            
+            // Add optional fields
+            const provider = document.getElementById('provider').value.trim();
+            if (provider) recipe.provider = provider;
+            
+            const category = document.getElementById('category').value.trim();
+            if (category) recipe.category = category;
+            
+            const meal = document.getElementById('meal').value.trim();
+            if (meal) recipe.meal = meal;
+            
+            const cuisine = document.getElementById('cuisine').value.trim();
+            if (cuisine) recipe.cuisine = cuisine;
+            
+            const description = document.getElementById('description').value.trim();
+            if (description) recipe.description = description;
+            
+            const image = document.getElementById('image').value.trim();
+            if (image) recipe.image = image;
+            
+            // Parse and add ingredients
+            const ingredientsText = document.getElementById('ingredients').value;
+            if (ingredientsText) {
+                recipe.ingredients = parseIngredients(ingredientsText);
+            }
+            
+            // Parse and add instructions
+            const instructionsText = document.getElementById('instructions').value;
+            if (instructionsText) {
+                recipe.instructions = parseInstructions(instructionsText);
+            }
+            
+            // Add timestamp
+            recipe.createdAt = recipe.createdAt || new Date().toISOString().split('T')[0];
+            
+            // Save to database
+            recipeDatabase[id] = recipe;
+            saveDatabase();
+            
+            // Update UI
+            renderRecipeList();
+            updateDataLists();
+            clearForm();
+            
+            showNotification(`Oppskrift "${recipe.title}" lagret!`, 'success');
+        }
+
+        // Delete recipe
+        function deleteRecipe() {
+            const id = document.getElementById('recipeId').value;
+            if (!id || !recipeDatabase[id]) return;
+            
+            const title = recipeDatabase[id].title;
+            
+            if (confirm(`Er du sikker på at du vil slette "${title}"?`)) {
+                delete recipeDatabase[id];
+                saveDatabase();
+                renderRecipeList();
+                clearForm();
+                showNotification(`Oppskrift "${title}" slettet!`, 'warning');
+            }
+        }
+
+        // Clear form
+        function clearForm() {
+            document.getElementById('recipeForm').reset();
+            document.getElementById('recipeId').value = '';
+            document.getElementById('deleteBtn').classList.add('hidden');
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+        }
+
+        // Render recipe list
+        function renderRecipeList() {
+            const list = document.getElementById('recipeList');
+            const recipes = Object.values(recipeDatabase).sort((a, b) => 
+                (a.title || '').localeCompare(b.title || '')
+            );
+            
+            list.innerHTML = '';
+            recipes.forEach(recipe => {
+                const item = document.createElement('div');
+                item.className = 'recipe-item p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer';
+                item.innerHTML = `
+                    <div class="font-medium text-gray-800">${recipe.title}</div>
+                    <div class="text-xs text-gray-500">${recipe.category || ''} ${recipe.meal ? '• ' + recipe.meal : ''}</div>
+                `;
+                item.onclick = () => editRecipe(recipe.id);
+                list.appendChild(item);
+            });
+            
+            document.getElementById('recipeCount').textContent = `${recipes.length} oppskrifter`;
+        }
+
+        // Edit recipe
+        function editRecipe(id) {
+            const recipe = recipeDatabase[id];
+            if (!recipe) return;
+            populateForm(recipe);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showNotification(`Redigerer "${recipe.title}"`, 'info');
+        }
+
+        // Preview recipe
+        function previewRecipe() {
+            const title = document.getElementById('title').value.trim();
+            if (!title) {
+                showNotification('Vennligst fyll inn minst en tittel', 'warning');
+                return;
+            }
+            
+            // Build preview HTML
+            let html = `<h3 class="text-xl font-bold text-gray-800">${title}</h3>`;
+            
+            const provider = document.getElementById('provider').value.trim();
+            if (provider) html += `<p class="text-sm text-gray-600">${provider}s oppskrift</p>`;
+            
+            const servings = document.getElementById('servings').value.trim();
+            if (servings) html += `<p class="text-sm text-gray-600 mb-2">Porsjoner: ${servings}</p>`;
+            
+            const meta = [];
+            const category = document.getElementById('category').value.trim();
+            if (category) meta.push(`Kategori: ${category}`);
+            const meal = document.getElementById('meal').value.trim();
+            if (meal) meta.push(`Måltid: ${meal}`);
+            const cuisine = document.getElementById('cuisine').value.trim();
+            if (cuisine) meta.push(`Kjøkken: ${cuisine}`);
+            if (meta.length) html += `<p class="text-xs text-gray-500 mb-3">${meta.join(' • ')}</p>`;
+            
+            const description = document.getElementById('description').value.trim();
+            if (description) html += `<p class="text-gray-700 mb-4">${description}</p>`;
+            
+            const image = document.getElementById('image').value.trim();
+            if (image) html += `<img src="${image}" class="w-full h-48 object-cover rounded-lg mb-4">`;
+            
+            // Ingredients
+            const ingredientsText = document.getElementById('ingredients').value.trim();
+            if (ingredientsText) {
+                const ingredients = parseIngredients(ingredientsText);
+                html += '<h4 class="font-semibold text-gray-800 mb-2">Ingredienser:</h4>';
+                html += '<div class="mb-4">';
+                ingredients.forEach(item => {
+                    if (typeof item === 'string') {
+                        html += `<div class="text-gray-700">• ${item}</div>`;
+                    } else if (item.group) {
+                        html += `<div class="font-medium text-gray-700 mt-2">${item.group}:</div>`;
+                        item.items.forEach(ing => {
+                            html += `<div class="text-gray-700 ml-4">• ${ing}</div>`;
+                        });
+                    }
+                });
+                html += '</div>';
+            }
+            
+            // Instructions
+            const instructionsText = document.getElementById('instructions').value.trim();
+            if (instructionsText) {
+                const instructions = parseInstructions(instructionsText);
+                html += '<h4 class="font-semibold text-gray-800 mb-2">Fremgangsmåte:</h4>';
+                html += '<ol class="list-decimal list-inside space-y-1">';
+                instructions.forEach(inst => {
+                    html += `<li class="text-gray-700">${inst}</li>`;
+                });
+                html += '</ol>';
+            }
+            
+            document.getElementById('previewContent').innerHTML = html;
+            document.getElementById('previewModal').classList.remove('hidden');
+        }
+
+        // Close preview
+        function closePreview() {
+            document.getElementById('previewModal').classList.add('hidden');
+        }
+
+        // Export database (to file or clipboard)
+        async function exportDatabase(method) {
+            const recipes = Object.values(recipeDatabase);
+            if (recipes.length === 0) {
+                showNotification('Ingen oppskrifter å eksportere', 'warning');
+                document.getElementById('exportMenu').classList.remove('show');
+                return;
+            }
+            
+            // Create compact format
+            const compactJson = recipes.map(recipe => 
+                JSON.stringify(recipe)
+            ).join(',\n');
+            
+            const jsonContent = '[\n' + compactJson + '\n]';
+            
+            if (method === 'clipboard') {
+                // Copy to clipboard
+                try {
+                    await navigator.clipboard.writeText(jsonContent);
+                    showNotification(`${recipes.length} oppskrifter kopiert til utklippstavlen!`, 'success');
+                } catch (err) {
+                    // Fallback for older browsers
+                    const textarea = document.createElement('textarea');
+                    textarea.value = jsonContent;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showNotification(`${recipes.length} oppskrifter kopiert til utklippstavlen!`, 'success');
+                }
+            } else {
+                // Export to file
+                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recipes_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showNotification(`${recipes.length} oppskrifter eksportert til fil!`, 'success');
+            }
+            
+            // Close menu
+            document.getElementById('exportMenu').classList.remove('show');
+        }
+
+        // Import database
+        function importDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    const recipes = Array.isArray(imported) ? imported : [imported];
+                    
+                    let count = 0;
+                    recipes.forEach(recipe => {
+                        if (recipe.title) {
+                            // Generate new ID if missing
+                            if (!recipe.id) {
+                                recipe.id = generateId();
+                            }
+                            recipeDatabase[recipe.id] = recipe;
+                            count++;
+                        }
+                    });
+                    
+                    saveDatabase();
+                    renderRecipeList();
+                    updateDataLists();
+                    showNotification(`${count} oppskrifter importert!`, 'success');
+                } catch (err) {
+                    showNotification('Feil ved import: ' + err.message, 'error');
+                }
+                
+                // Reset file input
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
