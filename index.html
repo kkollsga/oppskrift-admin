@@ -783,20 +783,20 @@
             try {
                 let data;
                 
-                // Try to extract just the object if it's wrapped
-                let cleanedInput = jsonInput;
-                
-                // Remove wrapping like "recipe_template": {...} or recipe_template: {...}
-                const wrapperMatch = cleanedInput.match(/^["\']?[\w_]+["\']?\s*:\s*(\{[\s\S]*\})\s*$/);
-                if (wrapperMatch) {
-                    cleanedInput = wrapperMatch[1];
-                }
-                
                 // First try parsing as strict JSON
                 try {
-                    data = JSON.parse(cleanedInput);
+                    data = JSON.parse(jsonInput);
                 } catch (e) {
-                    // If that fails, try using eval (safe here since it's user's own input)
+                    // Try to extract just the object if it's wrapped
+                    let cleanedInput = jsonInput;
+                    
+                    // Remove wrapping like "recipe_template": {...} or recipe_template: {...}
+                    const wrapperMatch = cleanedInput.match(/^["\']?[\w_]+["\']?\s*:\s*(\{[\s\S]*\})\s*$/);
+                    if (wrapperMatch) {
+                        cleanedInput = wrapperMatch[1];
+                    }
+                    
+                    // If that fails, try cleaning up JavaScript object notation
                     try {
                         // Clean up the JavaScript object notation to make it valid
                         const jsObjectStr = cleanedInput
@@ -810,6 +810,13 @@
                         // Last resort: use eval
                         data = eval('(' + cleanedInput + ')');
                     }
+                }
+                
+                // Check if data is wrapped in a single key object (like { recipe_template: {...} })
+                const keys = Object.keys(data);
+                if (keys.length === 1 && typeof data[keys[0]] === 'object' && !Array.isArray(data[keys[0]])) {
+                    // Unwrap the nested object
+                    data = data[keys[0]];
                 }
                 
                 // ALWAYS generate a new ID for JSON input (don't use provided ID)
