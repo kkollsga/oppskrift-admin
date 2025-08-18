@@ -319,14 +319,14 @@
 
     <!-- Preview Modal -->
     <div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg max-w-3xl w-full relative">
-            <!-- Fixed close button -->
-            <button onclick="closePreview()" class="fixed top-8 right-8 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-50">
+        <div class="bg-white rounded-lg max-w-3xl w-full relative modal-content">
+            <!-- Close button inside modal -->
+            <button onclick="closePreview()" class="absolute top-4 right-4 bg-gray-100 rounded-full p-2 hover:bg-gray-200 z-10">
                 <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
-            <div class="modal-content p-6">
+            <div class="p-6">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 pr-12">Forhåndsvisning</h2>
                 <div id="previewContent" class="space-y-4">
                     <!-- Preview content will be inserted here -->
@@ -654,6 +654,13 @@
                 e.preventDefault();
                 saveRecipe();
             });
+            
+            // Click outside modal to close
+            document.getElementById('previewModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePreview();
+                }
+            });
         }
 
         // Generate unique ID
@@ -701,31 +708,42 @@
             try {
                 let data;
                 
+                // Try to extract just the object if it's wrapped
+                let cleanedInput = jsonInput;
+                
+                // Remove wrapping like "recipe_template": {...} or recipe_template: {...}
+                const wrapperMatch = cleanedInput.match(/^["\']?[\w_]+["\']?\s*:\s*(\{[\s\S]*\})\s*$/);
+                if (wrapperMatch) {
+                    cleanedInput = wrapperMatch[1];
+                }
+                
                 // First try parsing as strict JSON
                 try {
-                    data = JSON.parse(jsonInput);
+                    data = JSON.parse(cleanedInput);
                 } catch (e) {
                     // If that fails, try using eval (safe here since it's user's own input)
                     try {
-                        data = eval('(' + jsonInput + ')');
-                    } catch (evalError) {
-                        // If eval also fails, try one more approach with regex
-                        const quotedJson = jsonInput
-                            .replace(/'/g, '"') // Replace single quotes with double
-                            .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":') // Quote keys
-                            .replace(/:\s*"([^"]*)"([,}])/g, (match, value, ending) => {
-                                // Keep strings as they are
-                                return ':"' + value + '"' + ending;
-                            });
+                        // Clean up the JavaScript object notation to make it valid
+                        const jsObjectStr = cleanedInput
+                            .replace(/(\w+):/g, '"$1":') // Quote unquoted keys
+                            .replace(/:\s*'([^']*)'/g, ':"$1"') // Convert single quotes to double
+                            .replace(/,\s*}/g, '}') // Remove trailing commas
+                            .replace(/,\s*]/g, ']'); // Remove trailing commas in arrays
                         
-                        data = JSON.parse(quotedJson);
+                        data = JSON.parse(jsObjectStr);
+                    } catch (parseError) {
+                        // Last resort: use eval
+                        data = eval('(' + cleanedInput + ')');
                     }
                 }
                 
-                // If we have an active recipe, merge the data
+                // ALWAYS generate a new ID for JSON input (don't use provided ID)
+                delete data.id;
+                
+                // If we have an active recipe that we're editing, keep its ID
                 const currentId = document.getElementById('recipeId').value;
-                if (currentId) {
-                    data.id = currentId; // Keep current ID
+                if (currentId && recipeDatabase[currentId]) {
+                    data.id = currentId; // Keep current ID only if editing existing
                 }
                 
                 populateForm(data);
@@ -755,10 +773,12 @@
             updateRecipeIdDisplay();
             updateDeleteButtonVisibility();
             
-            // Handle ingredients
+            // Handle ingredients - now with more flexible parsing
             if (recipe.ingredients) {
                 let ingredientText = '';
+                
                 if (Array.isArray(recipe.ingredients)) {
+                    // Handle array format
                     recipe.ingredients.forEach(item => {
                         if (typeof item === 'string') {
                             // Skip comment lines from template
@@ -766,17 +786,34 @@
                                 ingredientText += item + '\n';
                             }
                         } else if (item.group && item.items) {
+                            // Handle {group: "name", items: [...]} format
                             ingredientText += `---${item.group}---\n`;
                             ingredientText += item.items.join('\n') + '\n';
                         }
                     });
+                } else if (typeof recipe.ingredients === 'object') {
+                    // Handle object format like {deig: [...], fyll: [...]}
+                    Object.keys(recipe.ingredients).forEach(groupName => {
+                        const items = recipe.ingredients[groupName];
+                        if (Array.isArray(items) && items.length > 0) {
+                            // Capitalize first letter of group name
+                            const formattedGroupName = groupName.charAt(0).toUpperCase() + groupName.slice(1);
+                            ingredientText += `---${formattedGroupName}---\n`;
+                            ingredientText += items.join('\n') + '\n';
+                        }
+                    });
                 }
+                
                 document.getElementById('ingredients').value = ingredientText.trim();
             }
             
             // Handle instructions
-            if (recipe.instructions && Array.isArray(recipe.instructions)) {
-                document.getElementById('instructions').value = recipe.instructions.join('\n');
+            if (recipe.instructions) {
+                if (Array.isArray(recipe.instructions)) {
+                    document.getElementById('instructions').value = recipe.instructions.join('\n');
+                } else if (typeof recipe.instructions === 'string') {
+                    document.getElementById('instructions').value = recipe.instructions;
+                }
             }
         }
 
@@ -1124,10 +1161,8 @@
                     let count = 0;
                     recipes.forEach(recipe => {
                         if (recipe.title) {
-                            // Generate new ID if missing
-                            if (!recipe.id) {
-                                recipe.id = generateId();
-                            }
+                            // Always generate new ID for imported recipes
+                            recipe.id = generateId();
                             recipeDatabase[recipe.id] = recipe;
                             count++;
                         }
