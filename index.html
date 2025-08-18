@@ -23,9 +23,20 @@
         .recipe-item:hover {
             transform: translateX(4px);
         }
+        .recipe-item .recipe-title {
+            color: rgb(31, 41, 55); /* text-gray-800 */
+        }
+        .recipe-item .recipe-meta {
+            color: rgb(107, 114, 128); /* text-gray-500 */
+        }
         .recipe-item.active {
             background-color: rgb(251 191 36);
+        }
+        .recipe-item.active .recipe-title {
             color: white;
+        }
+        .recipe-item.active .recipe-meta {
+            color: rgb(254 243 199); /* amber-100 */
         }
         .recipe-item.active:hover {
             background-color: rgb(245 158 11);
@@ -938,8 +949,8 @@
                 item.className = `recipe-item p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer ${recipe.id === currentId ? 'active' : ''}`;
                 item.dataset.recipeId = recipe.id;
                 item.innerHTML = `
-                    <div class="font-medium ${recipe.id === currentId ? 'text-white' : 'text-gray-800'}">${recipe.title}</div>
-                    <div class="text-xs ${recipe.id === currentId ? 'text-amber-100' : 'text-gray-500'}">
+                    <div class="font-medium recipe-title">${recipe.title}</div>
+                    <div class="text-xs recipe-meta">
                         ${recipe.category || ''} 
                         ${recipe.meal ? '• ' + recipe.meal : ''}
                         ${recipe.reference ? '📖' : ''}
