@@ -191,7 +191,12 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tittel *</label>
                             <input type="text" id="title" required onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                            <p id="recipeIdDisplay" class="text-xs text-gray-500 mt-1"></p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <p id="recipeIdDisplay" class="text-xs text-gray-500"></p>
+                                <button type="button" id="regenerateIdBtn" onclick="regenerateId()" class="hidden text-gray-400 hover:text-gray-600 transition" title="Generer ny ID">
+                                    <i class="fas fa-sync-alt text-xs"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Provider and Reference -->
@@ -479,10 +484,62 @@
         function updateRecipeIdDisplay() {
             const recipeId = document.getElementById('recipeId').value;
             const display = document.getElementById('recipeIdDisplay');
+            const regenerateBtn = document.getElementById('regenerateIdBtn');
+            
             if (recipeId) {
                 display.textContent = `ID: ${recipeId}`;
+                regenerateBtn.classList.remove('hidden');
             } else {
                 display.textContent = '';
+                regenerateBtn.classList.add('hidden');
+            }
+        }
+
+        // Regenerate recipe ID
+        function regenerateId() {
+            const currentTitle = document.getElementById('title').value.trim();
+            
+            if (!currentTitle) {
+                showNotification('Vennligst fyll inn en tittel først', 'warning');
+                return;
+            }
+            
+            const currentId = document.getElementById('recipeId').value;
+            
+            // Check if this ID is already in use
+            if (currentId && recipeDatabase[currentId]) {
+                if (!confirm('Dette vil endre oppskriftens ID. Den gamle IDen vil ikke lenger fungere. Er du sikker?')) {
+                    return;
+                }
+                
+                // Get the current recipe data
+                const recipeData = recipeDatabase[currentId];
+                
+                // Generate new ID
+                const newId = generateId();
+                
+                // Move recipe to new ID
+                recipeDatabase[newId] = { ...recipeData, id: newId };
+                delete recipeDatabase[currentId];
+                
+                // Update form
+                document.getElementById('recipeId').value = newId;
+                
+                // Save changes
+                saveDatabase();
+                renderRecipeList();
+                updateRecipeIdDisplay();
+                updateActiveRecipe();
+                saveToHistory();
+                
+                showNotification('Ny ID generert!', 'success');
+            } else {
+                // Just generate a new ID if no recipe exists yet
+                const newId = generateId();
+                document.getElementById('recipeId').value = newId;
+                updateRecipeIdDisplay();
+                saveToHistory();
+                showNotification('Ny ID generert!', 'success');
             }
         }
 
@@ -754,8 +811,14 @@
 
         // Save recipe
         function saveRecipe() {
-            const id = document.getElementById('recipeId').value || generateId();
-            const isNew = !document.getElementById('recipeId').value;
+            // Generate ID if not present
+            let id = document.getElementById('recipeId').value;
+            const isNew = !id;
+            
+            if (!id) {
+                id = generateId();
+                document.getElementById('recipeId').value = id;
+            }
             
             const recipe = {
                 id: id,
@@ -797,8 +860,8 @@
                 recipe.instructions = parseInstructions(instructionsText);
             }
             
-            // Add timestamp
-            recipe.createdAt = recipe.createdAt || new Date().toISOString().split('T')[0];
+            // Add timestamp - preserve existing timestamp if updating
+            recipe.createdAt = recipeDatabase[id]?.createdAt || new Date().toISOString().split('T')[0];
             
             // Save to database
             recipeDatabase[id] = recipe;
