@@ -136,6 +136,22 @@
         .sort-radio:checked + .sort-label:hover {
             background: rgb(245 158 11);
         }
+        /* Tip styling */
+        .instruction-tip {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 0.25rem;
+            display: flex;
+            align-items: start;
+            gap: 0.5rem;
+        }
+        .instruction-tip-icon {
+            color: #f59e0b;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -308,12 +324,9 @@
                         <!-- Image URL -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Bilde URL 
-                                <a href="https://unsplash.com" target="_blank" class="text-xs text-purple-600 hover:underline ml-2">
-                                    Finn bilder på Unsplash →
-                                </a>
+                                Bilde URL
                             </label>
-                            <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
+                            <input type="text" id="image" placeholder="https://..." 
                                    oninput="updateImagePreview()"
                                    onchange="saveToHistory()"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
@@ -342,9 +355,9 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Fremgangsmåte 
-                                <span class="text-xs text-gray-500">(én instruksjon per linje)</span>
+                                <span class="text-xs text-gray-500">(én per linje, start tips med "TIP: ")</span>
                             </label>
-                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;Elt deigen i 10 minutter" 
+                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;TIP: Deigen skal være litt klissete&#10;Elt deigen i 10 minutter" 
                                       onchange="saveToHistory()"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
@@ -502,7 +515,7 @@
 
         // Recipe template for AI systems
         function getRecipeTemplate() {
-            return {
+            const template = {
                 title: "Oppskriftens navn (PÅKREVD)",
                 servings: "Antall porsjoner, f.eks: '4 porsjoner' eller '12 stk.' (PÅKREVD)",
                 provider: "Hvem oppskriften kommer fra (VALGFRITT, f.eks: 'Bestemor')",
@@ -529,12 +542,35 @@
                 instructions: [
                     "Første steg i oppskriften",
                     "Andre steg med klare instruksjoner",
+                    "TIP: Tips kan markeres ved å starte linjen med 'TIP: '",
                     "Tredje steg",
                     "Fortsett med alle nødvendige steg",
                     "Siste steg og serveringsforslag"
                 ],
-                image: "URL til bilde (VALGFRITT, helst fra Unsplash med format: https://images.unsplash.com/photo-XXX?w=800&h=600&fit=crop)"
+                image: "URL til bilde (VALGFRITT)"
             };
+            
+            const instructions = `
+INSTRUKSJONER FOR BRUK MED AI-SYSTEMER:
+
+Kan du lese og tolke den håndskrevne oppskriften i det vedlagte bildet? Tolk så mye som mulig fra oppskrift og bruk komplimentære kunnskap fra kjente oppskrifter fra norge på 60-80 tallet for å være sikker på at vi setter opp oppskriften riktig. Moderniser oppskriften ved å bruke moderne mål og beskrivelser. Folk på 60-70 tallet var ofte mye mer erfarne på kjøkkenet og trengte mindre hjelp.
+
+Når du er ferdig med dette konverter oppskriften til et JSON objekt med formatet under.
+
+Personen som laget oppskriften er Farmor, og kilden er Farmors oppskrifter.
+
+JSON FORMAT:
+${JSON.stringify(template, null, 2)}
+
+VIKTIGE MERKNADER:
+- Tittel og porsjoner er PÅKREVD
+- Alle andre felt er valgfrie
+- Tips i instruksjoner markeres med "TIP: " i starten av linjen
+- Ingredienser kan grupperes med objekter som vist i eksemplet
+- Moderniser gamle mål og beskrivelser
+`;
+            
+            return instructions;
         }
 
         // Update image preview
@@ -543,14 +579,17 @@
             const previewContainer = document.getElementById('imagePreviewContainer');
             const previewImg = document.getElementById('imagePreview');
             
-            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
-                previewImg.src = imageUrl;
-                previewContainer.classList.remove('hidden');
-                
-                // Handle image load error
-                previewImg.onerror = function() {
+            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/'))) {
+                // Attempt to load the image
+                const testImg = new Image();
+                testImg.onload = function() {
+                    previewImg.src = imageUrl;
+                    previewContainer.classList.remove('hidden');
+                };
+                testImg.onerror = function() {
                     previewContainer.classList.add('hidden');
                 };
+                testImg.src = imageUrl;
             } else {
                 previewContainer.classList.add('hidden');
             }
@@ -632,23 +671,22 @@
 
         // Copy template to clipboard
         async function copyTemplate() {
-            const template = getRecipeTemplate();
-            const templateJson = JSON.stringify(template, null, 2);
+            const templateText = getRecipeTemplate();
             
             try {
-                await navigator.clipboard.writeText(templateJson);
-                showNotification('Oppskriftmal kopiert til utklippstavlen! Bruk den med AI-systemer.', 'success');
+                await navigator.clipboard.writeText(templateText);
+                showNotification('Oppskriftmal med instruksjoner kopiert til utklippstavlen!', 'success');
             } catch (err) {
                 // Fallback for older browsers
                 const textarea = document.createElement('textarea');
-                textarea.value = templateJson;
+                textarea.value = templateText;
                 textarea.style.position = 'fixed';
                 textarea.style.opacity = '0';
                 document.body.appendChild(textarea);
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showNotification('Oppskriftmal kopiert til utklippstavlen!', 'success');
+                showNotification('Oppskriftmal med instruksjoner kopiert!', 'success');
             }
         }
 
@@ -1226,16 +1264,31 @@
                 html += '</div>';
             }
             
-            // Instructions
+            // Instructions with tips support
             const instructionsText = document.getElementById('instructions').value.trim();
             if (instructionsText) {
                 const instructions = parseInstructions(instructionsText);
                 html += '<h4 class="font-semibold text-gray-800 mb-2">Fremgangsmåte:</h4>';
-                html += '<ol class="list-decimal list-inside space-y-1">';
+                html += '<div class="space-y-1">';
+                
+                let stepNumber = 1;
                 instructions.forEach(inst => {
-                    html += `<li class="text-gray-700">${inst}</li>`;
+                    if (inst.toUpperCase().startsWith('TIP:') || inst.toUpperCase().startsWith('TIPS:')) {
+                        // Render as tip
+                        const tipText = inst.replace(/^TIPS?:\s*/i, '');
+                        html += `
+                            <div class="instruction-tip">
+                                <i class="fas fa-lightbulb instruction-tip-icon"></i>
+                                <span class="text-gray-700">${tipText}</span>
+                            </div>
+                        `;
+                    } else {
+                        // Render as numbered step
+                        html += `<div class="text-gray-700">${stepNumber}. ${inst}</div>`;
+                        stepNumber++;
+                    }
                 });
-                html += '</ol>';
+                html += '</div>';
             }
             
             document.getElementById('previewContent').innerHTML = html;
