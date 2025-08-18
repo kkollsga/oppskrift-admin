@@ -6,6 +6,7 @@
     <title>Oppskrift Administrator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -21,6 +22,13 @@
         }
         .recipe-item:hover {
             transform: translateX(4px);
+        }
+        .recipe-item.active {
+            background-color: rgb(251 191 36);
+            color: white;
+        }
+        .recipe-item.active:hover {
+            background-color: rgb(245 158 11);
         }
         .modal-content {
             max-height: 90vh;
@@ -139,7 +147,10 @@
                         <h2 class="text-lg font-semibold text-gray-700">Oppskrifter</h2>
                         <span class="text-sm text-gray-500" id="recipeCount">0 oppskrifter</span>
                     </div>
-                    <div id="recipeList" class="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto custom-scroll">
+                    <button onclick="clearForm()" class="w-full mb-3 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition">
+                        <i class="fas fa-plus mr-2"></i>Ny oppskrift
+                    </button>
+                    <div id="recipeList" class="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto custom-scroll">
                         <!-- Recipe items will be inserted here -->
                     </div>
                 </div>
@@ -160,7 +171,17 @@
                         </button>
                     </div>
 
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Oppskrift Detaljer</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">Oppskrift Detaljer</h2>
+                        <div class="flex gap-2">
+                            <button onclick="undo()" id="undoBtn" disabled class="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button onclick="redo()" id="redoBtn" disabled class="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                        </div>
+                    </div>
                     
                     <form id="recipeForm" class="space-y-4">
                         <!-- Hidden ID field -->
@@ -169,42 +190,43 @@
                         <!-- Title -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tittel *</label>
-                            <input type="text" id="title" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="title" required onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <p id="recipeIdDisplay" class="text-xs text-gray-500 mt-1"></p>
                         </div>
 
                         <!-- Provider and Reference -->
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Oppskrift fra</label>
-                                <input type="text" id="provider" placeholder="F.eks: Bestemor" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <input type="text" id="provider" placeholder="F.eks: Bestemor" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Referanse</label>
-                                <input type="text" id="reference" placeholder="F.eks: Side 45, Kokebok navn" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <input type="text" id="reference" placeholder="F.eks: Side 45, Kokebok navn" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                             </div>
                         </div>
 
                         <!-- Servings -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Porsjoner *</label>
-                            <input type="text" id="servings" required placeholder="F.eks: 4 porsjoner" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="servings" required placeholder="F.eks: 4 porsjoner" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                         </div>
 
                         <!-- Category, Meal, Cuisine -->
                         <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                                <input type="text" id="category" list="categoryList" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <input type="text" id="category" list="categoryList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                                 <datalist id="categoryList"></datalist>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Måltid</label>
-                                <input type="text" id="meal" list="mealList" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <input type="text" id="meal" list="mealList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                                 <datalist id="mealList"></datalist>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Kjøkken</label>
-                                <input type="text" id="cuisine" list="cuisineList" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <input type="text" id="cuisine" list="cuisineList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                                 <datalist id="cuisineList"></datalist>
                             </div>
                         </div>
@@ -212,7 +234,7 @@
                         <!-- Description -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
-                            <textarea id="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            <textarea id="description" rows="3" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
 
                         <!-- Image URL -->
@@ -225,6 +247,7 @@
                             </label>
                             <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
                                    oninput="updateImagePreview()"
+                                   onchange="saveToHistory()"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                             
                             <!-- Image Preview -->
@@ -243,6 +266,7 @@
                                 <span class="text-xs text-gray-500">(én per linje, eller skill grupper med "---Gruppenavn---")</span>
                             </label>
                             <textarea id="ingredients" rows="6" placeholder="500 g mel&#10;2 dl melk&#10;---Fyll---&#10;100 g sukker&#10;2 ss kanel" 
+                                      onchange="saveToHistory()"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"></textarea>
                         </div>
 
@@ -253,18 +277,16 @@
                                 <span class="text-xs text-gray-500">(én instruksjon per linje)</span>
                             </label>
                             <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;Elt deigen i 10 minutter" 
+                                      onchange="saveToHistory()"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
 
                         <!-- Form Actions -->
                         <div class="flex justify-between pt-4 border-t">
-                            <button type="button" onclick="clearForm()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
-                                ↻ Ny oppskrift
+                            <button type="button" onclick="previewRecipe()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                                👁 Forhåndsvis
                             </button>
                             <div class="flex gap-2">
-                                <button type="button" onclick="previewRecipe()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-                                    👁 Forhåndsvis
-                                </button>
                                 <button type="button" onclick="deleteRecipe()" id="deleteBtn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
                                     🗑 Slett
                                 </button>
@@ -301,10 +323,102 @@
         // Database
         let recipeDatabase = {};
         
+        // History management
+        let history = [];
+        let historyIndex = -1;
+        let isApplyingHistory = false;
+        
         // Default suggestions
         const defaultCategories = ['Brød', 'Bakverk', 'Kake', 'Grateng', 'Gryte', 'Kjeks', 'Grøt', 'Suppe', 'Salat', 'Kjøttkaker'];
         const defaultMeals = ['Frokost', 'Lunsj', 'Middag', 'Dessert', 'Snacks', 'Tilbehør'];
         const defaultCuisines = ['Norsk', 'Italiensk', 'Skandinavisk', 'Internasjonal', 'Asiatisk', 'Meksikansk', 'Fransk'];
+
+        // Save current form state to history
+        function saveToHistory() {
+            if (isApplyingHistory) return; // Don't save when applying history
+            
+            const currentState = getFormState();
+            
+            // Remove any states after current index
+            history = history.slice(0, historyIndex + 1);
+            
+            // Add new state
+            history.push(currentState);
+            historyIndex++;
+            
+            // Limit history to 50 states
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            updateHistoryButtons();
+        }
+
+        // Get current form state
+        function getFormState() {
+            return {
+                recipeId: document.getElementById('recipeId').value,
+                title: document.getElementById('title').value,
+                provider: document.getElementById('provider').value,
+                reference: document.getElementById('reference').value,
+                servings: document.getElementById('servings').value,
+                category: document.getElementById('category').value,
+                meal: document.getElementById('meal').value,
+                cuisine: document.getElementById('cuisine').value,
+                description: document.getElementById('description').value,
+                image: document.getElementById('image').value,
+                ingredients: document.getElementById('ingredients').value,
+                instructions: document.getElementById('instructions').value
+            };
+        }
+
+        // Apply form state from history
+        function applyFormState(state) {
+            isApplyingHistory = true;
+            document.getElementById('recipeId').value = state.recipeId || '';
+            document.getElementById('title').value = state.title || '';
+            document.getElementById('provider').value = state.provider || '';
+            document.getElementById('reference').value = state.reference || '';
+            document.getElementById('servings').value = state.servings || '';
+            document.getElementById('category').value = state.category || '';
+            document.getElementById('meal').value = state.meal || '';
+            document.getElementById('cuisine').value = state.cuisine || '';
+            document.getElementById('description').value = state.description || '';
+            document.getElementById('image').value = state.image || '';
+            document.getElementById('ingredients').value = state.ingredients || '';
+            document.getElementById('instructions').value = state.instructions || '';
+            updateImagePreview();
+            updateRecipeIdDisplay();
+            updateDeleteButtonVisibility();
+            isApplyingHistory = false;
+        }
+
+        // Undo action
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                applyFormState(history[historyIndex]);
+                updateHistoryButtons();
+                updateActiveRecipe();
+            }
+        }
+
+        // Redo action
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                applyFormState(history[historyIndex]);
+                updateHistoryButtons();
+                updateActiveRecipe();
+            }
+        }
+
+        // Update history buttons state
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = historyIndex <= 0;
+            document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+        }
 
         // Recipe template for AI systems
         function getRecipeTemplate() {
@@ -358,6 +472,28 @@
                 };
             } else {
                 previewContainer.classList.add('hidden');
+            }
+        }
+
+        // Update recipe ID display
+        function updateRecipeIdDisplay() {
+            const recipeId = document.getElementById('recipeId').value;
+            const display = document.getElementById('recipeIdDisplay');
+            if (recipeId) {
+                display.textContent = `ID: ${recipeId}`;
+            } else {
+                display.textContent = '';
+            }
+        }
+
+        // Update delete button visibility
+        function updateDeleteButtonVisibility() {
+            const recipeId = document.getElementById('recipeId').value;
+            const deleteBtn = document.getElementById('deleteBtn');
+            if (recipeId && recipeDatabase[recipeId]) {
+                deleteBtn.classList.remove('hidden');
+            } else {
+                deleteBtn.classList.add('hidden');
             }
         }
 
@@ -442,6 +578,9 @@
             renderRecipeList();
             updateDataLists();
             
+            // Initialize history with empty state
+            saveToHistory();
+            
             // Form submit handler
             document.getElementById('recipeForm').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -515,9 +654,16 @@
                     }
                 }
                 
+                // If we have an active recipe, merge the data
+                const currentId = document.getElementById('recipeId').value;
+                if (currentId) {
+                    data.id = currentId; // Keep current ID
+                }
+                
                 populateForm(data);
                 document.getElementById('jsonPaste').value = '';
                 showNotification('JSON parsket! Gjennomgå og lagre oppskriften.', 'success');
+                saveToHistory();
             } catch (e) {
                 showNotification('Ugyldig format: ' + e.message, 'error');
             }
@@ -538,6 +684,8 @@
             
             // Update image preview
             updateImagePreview();
+            updateRecipeIdDisplay();
+            updateDeleteButtonVisibility();
             
             // Handle ingredients
             if (recipe.ingredients) {
@@ -561,13 +709,6 @@
             // Handle instructions
             if (recipe.instructions && Array.isArray(recipe.instructions)) {
                 document.getElementById('instructions').value = recipe.instructions.join('\n');
-            }
-            
-            // Show delete button if editing
-            if (recipe.id) {
-                document.getElementById('deleteBtn').classList.remove('hidden');
-            } else {
-                document.getElementById('deleteBtn').classList.add('hidden');
             }
         }
 
@@ -614,6 +755,7 @@
         // Save recipe
         function saveRecipe() {
             const id = document.getElementById('recipeId').value || generateId();
+            const isNew = !document.getElementById('recipeId').value;
             
             const recipe = {
                 id: id,
@@ -662,12 +804,16 @@
             recipeDatabase[id] = recipe;
             saveDatabase();
             
-            // Update UI
+            // Update UI but don't clear form
+            document.getElementById('recipeId').value = id;
+            updateRecipeIdDisplay();
+            updateDeleteButtonVisibility();
             renderRecipeList();
             updateDataLists();
-            clearForm();
+            updateActiveRecipe();
+            saveToHistory();
             
-            showNotification(`Oppskrift "${recipe.title}" lagret!`, 'success');
+            showNotification(`Oppskrift "${recipe.title}" ${isNew ? 'opprettet' : 'oppdatert'}!`, 'success');
         }
 
         // Delete recipe
@@ -690,8 +836,28 @@
         function clearForm() {
             document.getElementById('recipeForm').reset();
             document.getElementById('recipeId').value = '';
-            document.getElementById('deleteBtn').classList.add('hidden');
             document.getElementById('imagePreviewContainer').classList.add('hidden');
+            updateRecipeIdDisplay();
+            updateDeleteButtonVisibility();
+            updateActiveRecipe();
+            
+            // Reset history
+            history = [];
+            historyIndex = -1;
+            saveToHistory();
+        }
+
+        // Update active recipe highlight
+        function updateActiveRecipe() {
+            const currentId = document.getElementById('recipeId').value;
+            const items = document.querySelectorAll('.recipe-item');
+            items.forEach(item => {
+                if (item.dataset.recipeId === currentId) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
         }
 
         // Render recipe list
@@ -701,13 +867,16 @@
                 (a.title || '').localeCompare(b.title || '')
             );
             
+            const currentId = document.getElementById('recipeId').value;
+            
             list.innerHTML = '';
             recipes.forEach(recipe => {
                 const item = document.createElement('div');
-                item.className = 'recipe-item p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer';
+                item.className = `recipe-item p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer ${recipe.id === currentId ? 'active' : ''}`;
+                item.dataset.recipeId = recipe.id;
                 item.innerHTML = `
-                    <div class="font-medium text-gray-800">${recipe.title}</div>
-                    <div class="text-xs text-gray-500">
+                    <div class="font-medium ${recipe.id === currentId ? 'text-white' : 'text-gray-800'}">${recipe.title}</div>
+                    <div class="text-xs ${recipe.id === currentId ? 'text-amber-100' : 'text-gray-500'}">
                         ${recipe.category || ''} 
                         ${recipe.meal ? '• ' + recipe.meal : ''}
                         ${recipe.reference ? '📖' : ''}
@@ -725,8 +894,14 @@
             const recipe = recipeDatabase[id];
             if (!recipe) return;
             populateForm(recipe);
+            updateActiveRecipe();
             window.scrollTo({ top: 0, behavior: 'smooth' });
             showNotification(`Redigerer "${recipe.title}"`, 'info');
+            
+            // Reset history for this recipe
+            history = [];
+            historyIndex = -1;
+            saveToHistory();
         }
 
         // Preview recipe
