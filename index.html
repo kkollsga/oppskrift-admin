@@ -413,6 +413,7 @@
             const category = document.getElementById('category').value.trim();
             const meal = document.getElementById('meal').value.trim();
             const cuisine = document.getElementById('cuisine').value.trim();
+            const description = document.getElementById('description').value.trim();
             const ingredientsText = document.getElementById('ingredients').value.trim();
             const instructionsText = document.getElementById('instructions').value.trim();
             
@@ -445,12 +446,13 @@
             // Build the AI prompt
             const aiPrompt = `Generate a high-quality advertisement image for a food presentation. The image should be a close-up shot at a 40-degree angle of a well-decorated and dramatically lit table, where the ready food product is the main focus point. Use welcoming colors that give a cozy, presenting vibe. Create a professional food photography style image with beautiful lighting and composition.
 
-Recipe title: ${title || 'Not specified'}
-Category: ${category || 'Not specified'} | Meal: ${meal || 'Not specified'} | Cuisine: ${cuisine || 'Not specified'}
-Ingredients: ${formattedIngredients || 'Not specified'}
-Instructions: ${formattedInstructions || 'Not specified'}
+        Recipe title: ${title || 'Not specified'}
+        Description: ${description || 'Not specified'}
+        Category: ${category || 'Not specified'} | Meal: ${meal || 'Not specified'} | Cuisine: ${cuisine || 'Not specified'}
+        Ingredients: ${formattedIngredients || 'Not specified'}
+        Instructions: ${formattedInstructions || 'Not specified'}
 
-The final dish should look appetizing, fresh, and professionally plated. Include appropriate table settings, garnishes, and background elements that complement the dish without overwhelming it. The lighting should be warm and inviting, highlighting the textures and colors of the food. The image should be widescreen, contain no text or resipes. The image simply displays the dish, no fuzz.`;
+        The final dish should look appetizing, fresh, and professionally plated. Include appropriate table settings, garnishes, and background elements that complement the dish without overwhelming it. The lighting should be warm and inviting, highlighting the textures and colors of the food. The image should be widescreen. The image should contain no recipes and no text.`;
             
             try {
                 await navigator.clipboard.writeText(aiPrompt);
