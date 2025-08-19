@@ -1,4 +1,4 @@
-f<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="no">
 <head>
     <meta charset="UTF-8">
@@ -135,22 +135,6 @@ f<!DOCTYPE html>
         }
         .sort-radio:checked + .sort-label:hover {
             background: rgb(245 158 11);
-        }
-        /* Tip styling */
-        .instruction-tip {
-            background: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 0.75rem;
-            margin: 0.5rem 0;
-            border-radius: 0.25rem;
-            display: flex;
-            align-items: start;
-            gap: 0.5rem;
-        }
-        .instruction-tip-icon {
-            color: #f59e0b;
-            flex-shrink: 0;
-            margin-top: 2px;
         }
     </style>
 </head>
@@ -324,12 +308,18 @@ f<!DOCTYPE html>
                         <!-- Image URL -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Bilde URL
+                                Bilde URL 
+                                <a href="https://unsplash.com" target="_blank" class="text-xs text-purple-600 hover:underline ml-2">
+                                    Finn bilder på Unsplash →
+                                </a>
+                                <button type="button" onclick="exportImagePrompt()" class="text-xs text-indigo-600 hover:underline ml-2">
+                                    🎨 Eksporter bildeprompt →
+                                </button>
                             </label>
-                            <input type="text" id="image" placeholder="https://..." 
-                                   oninput="updateImagePreview()"
-                                   onchange="saveToHistory()"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
+                                oninput="updateImagePreview()"
+                                onchange="saveToHistory()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                             
                             <!-- Image Preview -->
                             <div id="imagePreviewContainer" class="hidden mt-3">
@@ -355,9 +345,9 @@ f<!DOCTYPE html>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Fremgangsmåte 
-                                <span class="text-xs text-gray-500">(én per linje, start tips med "TIP: ")</span>
+                                <span class="text-xs text-gray-500">(én instruksjon per linje)</span>
                             </label>
-                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;TIP: Deigen skal være litt klissete&#10;Elt deigen i 10 minutter" 
+                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;Elt deigen i 10 minutter" 
                                       onchange="saveToHistory()"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
@@ -416,6 +406,68 @@ f<!DOCTYPE html>
         const defaultCategories = ['Brød', 'Bakverk', 'Kake', 'Grateng', 'Gryte', 'Kjeks', 'Grøt', 'Suppe', 'Salat', 'Kjøttkaker'];
         const defaultMeals = ['Frokost', 'Lunsj', 'Middag', 'Dessert', 'Snacks', 'Tilbehør'];
         const defaultCuisines = ['Norsk', 'Italiensk', 'Skandinavisk', 'Internasjonal', 'Asiatisk', 'Meksikansk', 'Fransk'];
+
+        // Export image prompt function
+        async function exportImagePrompt() {
+            const title = document.getElementById('title').value.trim();
+            const category = document.getElementById('category').value.trim();
+            const meal = document.getElementById('meal').value.trim();
+            const cuisine = document.getElementById('cuisine').value.trim();
+            const ingredientsText = document.getElementById('ingredients').value.trim();
+            const instructionsText = document.getElementById('instructions').value.trim();
+            
+            if (!title) {
+                showNotification('Vennligst fyll inn minst en tittel først', 'warning');
+                return;
+            }
+            
+            // Format ingredients
+            let formattedIngredients = '';
+            if (ingredientsText) {
+                const ingredients = parseIngredients(ingredientsText);
+                ingredients.forEach(item => {
+                    if (typeof item === 'string') {
+                        formattedIngredients += item + ', ';
+                    } else if (item.group && item.items) {
+                        formattedIngredients += item.group + ': ' + item.items.join(', ') + '. ';
+                    }
+                });
+                formattedIngredients = formattedIngredients.trim().replace(/,$/, '');
+            }
+            
+            // Format instructions
+            let formattedInstructions = '';
+            if (instructionsText) {
+                const instructions = parseInstructions(instructionsText);
+                formattedInstructions = instructions.join('. ');
+            }
+            
+            // Build the AI prompt
+            const aiPrompt = `Generate a high-quality advertisement image for a food presentation. The image should be a close-up shot at a 40-degree angle of a well-decorated and dramatically lit table, where the ready food product is the main focus point. Use welcoming colors that give a cozy, presenting vibe. Create a professional food photography style image with beautiful lighting and composition.
+
+Recipe title: ${title || 'Not specified'}
+Category: ${category || 'Not specified'} | Meal: ${meal || 'Not specified'} | Cuisine: ${cuisine || 'Not specified'}
+Ingredients: ${formattedIngredients || 'Not specified'}
+Instructions: ${formattedInstructions || 'Not specified'}
+
+The final dish should look appetizing, fresh, and professionally plated. Include appropriate table settings, garnishes, and background elements that complement the dish without overwhelming it. The lighting should be warm and inviting, highlighting the textures and colors of the food.`;
+            
+            try {
+                await navigator.clipboard.writeText(aiPrompt);
+                showNotification('Bildeprompt kopiert til utklippstavlen!', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = aiPrompt;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showNotification('Bildeprompt kopiert til utklippstavlen!', 'success');
+            }
+        }
 
         // Change sort order
         function changeSortOrder(order) {
@@ -515,7 +567,7 @@ f<!DOCTYPE html>
 
         // Recipe template for AI systems
         function getRecipeTemplate() {
-            const template = {
+            return {
                 title: "Oppskriftens navn (PÅKREVD)",
                 servings: "Antall porsjoner, f.eks: '4 porsjoner' eller '12 stk.' (PÅKREVD)",
                 provider: "Hvem oppskriften kommer fra (VALGFRITT, f.eks: 'Bestemor')",
@@ -542,35 +594,12 @@ f<!DOCTYPE html>
                 instructions: [
                     "Første steg i oppskriften",
                     "Andre steg med klare instruksjoner",
-                    "TIP: Tips kan markeres ved å starte linjen med 'TIP: '",
                     "Tredje steg",
                     "Fortsett med alle nødvendige steg",
                     "Siste steg og serveringsforslag"
-                ]
+                ],
+                image: "URL til bilde (VALGFRITT, helst fra Unsplash med format: https://images.unsplash.com/photo-XXX?w=800&h=600&fit=crop)"
             };
-            
-            const instructions = `
-INSTRUKSJONER FOR BRUK MED AI-SYSTEMER:
-
-Kan du lese og tolke den håndskrevne oppskriften i det vedlagte bildet? Tolk så mye som mulig fra oppskrift og bruk komplimentære kunnskap fra kjente oppskrifter fra norge på 60-80 tallet for å være sikker på at vi setter opp oppskriften riktig. Moderniser oppskriften ved å bruke moderne mål og beskrivelser. Folk på 60-70 tallet var ofte mye mer erfarne på kjøkkenet og trengte mindre hjelp.
-
-Når du er ferdig med dette konverter oppskriften til et JSON objekt med formatet under.
-
-Personen som laget oppskriften er Farmor, og kilden er Farmors oppskrifter.
-
-JSON FORMAT:
-${JSON.stringify(template, null, 2)}
-
-VIKTIGE MERKNADER:
-- Tittel og porsjoner er PÅKREVD
-- Du trenger ikke spesifisere at det er fra 60-70 tallet i beskrivelsen
-- Alle andre felt er valgfrie
-- Tips i instruksjoner markeres med "TIP: " i starten av linjen
-- Ingredienser kan grupperes med objekter som vist i eksemplet
-- Moderniser gamle mål og beskrivelser
-`;
-            
-            return instructions;
         }
 
         // Update image preview
@@ -579,17 +608,14 @@ VIKTIGE MERKNADER:
             const previewContainer = document.getElementById('imagePreviewContainer');
             const previewImg = document.getElementById('imagePreview');
             
-            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/'))) {
-                // Attempt to load the image
-                const testImg = new Image();
-                testImg.onload = function() {
-                    previewImg.src = imageUrl;
-                    previewContainer.classList.remove('hidden');
-                };
-                testImg.onerror = function() {
+            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
+                previewImg.src = imageUrl;
+                previewContainer.classList.remove('hidden');
+                
+                // Handle image load error
+                previewImg.onerror = function() {
                     previewContainer.classList.add('hidden');
                 };
-                testImg.src = imageUrl;
             } else {
                 previewContainer.classList.add('hidden');
             }
@@ -671,22 +697,23 @@ VIKTIGE MERKNADER:
 
         // Copy template to clipboard
         async function copyTemplate() {
-            const templateText = getRecipeTemplate();
+            const template = getRecipeTemplate();
+            const templateJson = JSON.stringify(template, null, 2);
             
             try {
-                await navigator.clipboard.writeText(templateText);
-                showNotification('Oppskriftmal med instruksjoner kopiert til utklippstavlen!', 'success');
+                await navigator.clipboard.writeText(templateJson);
+                showNotification('Oppskriftmal kopiert til utklippstavlen! Bruk den med AI-systemer.', 'success');
             } catch (err) {
                 // Fallback for older browsers
                 const textarea = document.createElement('textarea');
-                textarea.value = templateText;
+                textarea.value = templateJson;
                 textarea.style.position = 'fixed';
                 textarea.style.opacity = '0';
                 document.body.appendChild(textarea);
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showNotification('Oppskriftmal med instruksjoner kopiert!', 'success');
+                showNotification('Oppskriftmal kopiert til utklippstavlen!', 'success');
             }
         }
 
@@ -1264,31 +1291,16 @@ VIKTIGE MERKNADER:
                 html += '</div>';
             }
             
-            // Instructions with tips support
+            // Instructions
             const instructionsText = document.getElementById('instructions').value.trim();
             if (instructionsText) {
                 const instructions = parseInstructions(instructionsText);
                 html += '<h4 class="font-semibold text-gray-800 mb-2">Fremgangsmåte:</h4>';
-                html += '<div class="space-y-1">';
-                
-                let stepNumber = 1;
+                html += '<ol class="list-decimal list-inside space-y-1">';
                 instructions.forEach(inst => {
-                    if (inst.toUpperCase().startsWith('TIP:') || inst.toUpperCase().startsWith('TIPS:')) {
-                        // Render as tip
-                        const tipText = inst.replace(/^TIPS?:\s*/i, '');
-                        html += `
-                            <div class="instruction-tip">
-                                <i class="fas fa-lightbulb instruction-tip-icon"></i>
-                                <span class="text-gray-700">${tipText}</span>
-                            </div>
-                        `;
-                    } else {
-                        // Render as numbered step
-                        html += `<div class="text-gray-700">${stepNumber}. ${inst}</div>`;
-                        stepNumber++;
-                    }
+                    html += `<li class="text-gray-700">${inst}</li>`;
                 });
-                html += '</div>';
+                html += '</ol>';
             }
             
             document.getElementById('previewContent').innerHTML = html;
