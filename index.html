@@ -328,7 +328,7 @@
                                 </button>
                             </label>
                             <div class="flex gap-2">
-                                <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
+                                <input type="text" id="image" placeholder="https://images.unsplash.com/... eller ./images/bilde.jpg" 
                                     oninput="updateImagePreview()"
                                     onchange="saveToHistory()"
                                     class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
@@ -535,11 +535,7 @@
                 return; // No URL provided, show nothing
             }
             
-            // Validate URL format
-            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-                showImageError('Ugyldig URL. URL må starte med http:// eller https://');
-                return;
-            }
+            // No validation needed - allow relative URLs, absolute URLs, and data URLs
             
             // Show loading state
             loadingState.classList.remove('hidden');
@@ -568,10 +564,12 @@
                 // Try to provide more specific error messages
                 if (imageUrl.includes('unsplash.com')) {
                     errorMsg += 'Sjekk at Unsplash URL-en er korrekt formatert.';
+                } else if (imageUrl.startsWith('./') || imageUrl.startsWith('../') || !imageUrl.includes('://')) {
+                    errorMsg += 'Relative URL funnet. Sjekk at bildefilen eksisterer på riktig sti.';
                 } else if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
-                    errorMsg += 'Lokale bilder er ikke tilgjengelige. Bruk en offentlig URL.';
+                    errorMsg += 'Sjekk at lokal server kjører og at bildet er tilgjengelig.';
                 } else {
-                    errorMsg += 'Sjekk at URL-en er riktig og at bildet er offentlig tilgjengelig.';
+                    errorMsg += 'Sjekk at URL-en er riktig og at bildet er tilgjengelig.';
                 }
                 
                 showImageError(errorMsg);
@@ -602,23 +600,44 @@
                 return;
             }
             
-            // Clear the preview and reload
+            const loadingState = document.getElementById('imageLoadingState');
+            const errorState = document.getElementById('imageErrorState');
             const successState = document.getElementById('imageSuccessState');
+            
+            // Hide all states and show loading
+            errorState.classList.add('hidden');
             successState.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            
+            // Clear any existing timeout
+            if (imageLoadTimeout) {
+                clearTimeout(imageLoadTimeout);
+            }
             
             // Force reload by adding a cache-busting parameter
             const separator = imageUrl.includes('?') ? '&' : '?';
             const tempUrl = imageUrl + separator + 't=' + Date.now();
             
-            // Temporarily set the URL with cache buster for loading
+            // Create new image element to test loading
             const testImg = new Image();
+            
+            // Set timeout for slow loading
+            imageLoadTimeout = setTimeout(() => {
+                showImageError('Bildet tar for lang tid å laste. Sjekk URL-en og prøv igjen.');
+                testImg.src = ''; // Cancel loading
+            }, 10000); // 10 second timeout
+            
             testImg.onload = function() {
-                // Once loaded, update the preview with original URL
+                clearTimeout(imageLoadTimeout);
+                // Once loaded with cache buster, update the preview with original URL
                 updateImagePreview();
             };
+            
             testImg.onerror = function() {
+                clearTimeout(imageLoadTimeout);
                 updateImagePreview(); // This will show the error
             };
+            
             testImg.src = tempUrl;
         }
 
@@ -751,7 +770,7 @@
                     "Fortsett med alle nødvendige steg",
                     "Siste steg og serveringsforslag"
                 ],
-                image: "URL til bilde (VALGFRITT, helst fra Unsplash med format: https://images.unsplash.com/photo-XXX?w=800&h=600&fit=crop)"
+                image: "URL til bilde (VALGFRITT, kan være absolutt URL som https://images.unsplash.com/photo-XXX eller relativ sti som ./images/bilde.jpg)"
             };
         }
 
