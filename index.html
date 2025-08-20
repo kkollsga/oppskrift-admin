@@ -108,6 +108,17 @@
             object-fit: cover;
             object-position: center;
         }
+        .image-loading {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
         /* Radio button styling */
         .sort-radio {
             display: none;
@@ -316,17 +327,45 @@
                                     🎨 Eksporter bildeprompt →
                                 </button>
                             </label>
-                            <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
-                                oninput="updateImagePreview()"
-                                onchange="saveToHistory()"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <div class="flex gap-2">
+                                <input type="text" id="image" placeholder="https://images.unsplash.com/..." 
+                                    oninput="updateImagePreview()"
+                                    onchange="saveToHistory()"
+                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <button type="button" onclick="refreshImage()" title="Last inn bilde på nytt" 
+                                    class="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                                    <i class="fas fa-sync-alt text-gray-600"></i>
+                                </button>
+                            </div>
                             
-                            <!-- Image Preview -->
-                            <div id="imagePreviewContainer" class="hidden mt-3">
-                                <div class="border rounded-lg overflow-hidden bg-gray-50">
-                                    <img id="imagePreview" src="" alt="Forhåndsvisning" class="image-preview w-full">
+                            <!-- Image Preview Container -->
+                            <div id="imagePreviewContainer" class="mt-3">
+                                <!-- Loading state -->
+                                <div id="imageLoadingState" class="hidden border rounded-lg p-8 bg-gray-50">
+                                    <div class="flex flex-col items-center justify-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                        <p class="text-sm">Laster bilde...</p>
+                                    </div>
                                 </div>
-                                <p class="text-xs text-gray-500 mt-1">Bildeforhåndsvisning</p>
+                                
+                                <!-- Error state -->
+                                <div id="imageErrorState" class="hidden border border-red-200 rounded-lg p-4 bg-red-50">
+                                    <div class="flex items-start gap-3">
+                                        <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-red-800">Kunne ikke laste bilde</p>
+                                            <p id="imageErrorMessage" class="text-xs text-red-600 mt-1"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Success state -->
+                                <div id="imageSuccessState" class="hidden">
+                                    <div class="border rounded-lg overflow-hidden bg-gray-50">
+                                        <img id="imagePreview" src="" alt="Forhåndsvisning" class="image-preview w-full">
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Bildeforhåndsvisning</p>
+                                </div>
                             </div>
                         </div>
 
@@ -402,6 +441,9 @@
         let historyIndex = -1;
         let isApplyingHistory = false;
         
+        // Image loading state
+        let imageLoadTimeout = null;
+        
         // Default suggestions
         const defaultCategories = ['Brød', 'Bakverk', 'Kake', 'Grateng', 'Gryte', 'Kjeks', 'Grøt', 'Suppe', 'Salat', 'Kjøttkaker'];
         const defaultMeals = ['Frokost', 'Lunsj', 'Middag', 'Dessert', 'Snacks', 'Tilbehør'];
@@ -469,6 +511,115 @@
                 document.body.removeChild(textarea);
                 showNotification('Bildeprompt kopiert til utklippstavlen!', 'success');
             }
+        }
+
+        // Update image preview with better error handling
+        function updateImagePreview() {
+            const imageUrl = document.getElementById('image').value.trim();
+            const loadingState = document.getElementById('imageLoadingState');
+            const errorState = document.getElementById('imageErrorState');
+            const successState = document.getElementById('imageSuccessState');
+            const previewImg = document.getElementById('imagePreview');
+            
+            // Clear any existing timeout
+            if (imageLoadTimeout) {
+                clearTimeout(imageLoadTimeout);
+            }
+            
+            // Hide all states initially
+            loadingState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            successState.classList.add('hidden');
+            
+            if (!imageUrl) {
+                return; // No URL provided, show nothing
+            }
+            
+            // Validate URL format
+            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                showImageError('Ugyldig URL. URL må starte med http:// eller https://');
+                return;
+            }
+            
+            // Show loading state
+            loadingState.classList.remove('hidden');
+            
+            // Create new image element to test loading
+            const testImg = new Image();
+            
+            // Set timeout for slow loading
+            imageLoadTimeout = setTimeout(() => {
+                showImageError('Bildet tar for lang tid å laste. Sjekk URL-en og prøv igjen.');
+                testImg.src = ''; // Cancel loading
+            }, 10000); // 10 second timeout
+            
+            testImg.onload = function() {
+                clearTimeout(imageLoadTimeout);
+                // Image loaded successfully
+                loadingState.classList.add('hidden');
+                previewImg.src = imageUrl;
+                successState.classList.remove('hidden');
+            };
+            
+            testImg.onerror = function() {
+                clearTimeout(imageLoadTimeout);
+                let errorMsg = 'Kunne ikke laste bildet. ';
+                
+                // Try to provide more specific error messages
+                if (imageUrl.includes('unsplash.com')) {
+                    errorMsg += 'Sjekk at Unsplash URL-en er korrekt formatert.';
+                } else if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
+                    errorMsg += 'Lokale bilder er ikke tilgjengelige. Bruk en offentlig URL.';
+                } else {
+                    errorMsg += 'Sjekk at URL-en er riktig og at bildet er offentlig tilgjengelig.';
+                }
+                
+                showImageError(errorMsg);
+            };
+            
+            // Start loading the image
+            testImg.src = imageUrl;
+        }
+        
+        // Show image error
+        function showImageError(message) {
+            const loadingState = document.getElementById('imageLoadingState');
+            const errorState = document.getElementById('imageErrorState');
+            const successState = document.getElementById('imageSuccessState');
+            const errorMessage = document.getElementById('imageErrorMessage');
+            
+            loadingState.classList.add('hidden');
+            successState.classList.add('hidden');
+            errorMessage.textContent = message;
+            errorState.classList.remove('hidden');
+        }
+        
+        // Refresh image (force reload)
+        function refreshImage() {
+            const imageUrl = document.getElementById('image').value.trim();
+            if (!imageUrl) {
+                showNotification('Ingen bilde-URL å oppdatere', 'warning');
+                return;
+            }
+            
+            // Clear the preview and reload
+            const successState = document.getElementById('imageSuccessState');
+            successState.classList.add('hidden');
+            
+            // Force reload by adding a cache-busting parameter
+            const separator = imageUrl.includes('?') ? '&' : '?';
+            const tempUrl = imageUrl + separator + 't=' + Date.now();
+            
+            // Temporarily set the URL with cache buster for loading
+            const testImg = new Image();
+            testImg.onload = function() {
+                // Once loaded, update the preview with original URL
+                updateImagePreview();
+            };
+            testImg.onerror = function() {
+                updateImagePreview(); // This will show the error
+            };
+            testImg.src = tempUrl;
         }
 
         // Change sort order
@@ -602,25 +753,6 @@
                 ],
                 image: "URL til bilde (VALGFRITT, helst fra Unsplash med format: https://images.unsplash.com/photo-XXX?w=800&h=600&fit=crop)"
             };
-        }
-
-        // Update image preview
-        function updateImagePreview() {
-            const imageUrl = document.getElementById('image').value.trim();
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            const previewImg = document.getElementById('imagePreview');
-            
-            if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
-                previewImg.src = imageUrl;
-                previewContainer.classList.remove('hidden');
-                
-                // Handle image load error
-                previewImg.onerror = function() {
-                    previewContainer.classList.add('hidden');
-                };
-            } else {
-                previewContainer.classList.add('hidden');
-            }
         }
 
         // Update recipe ID display
@@ -1107,7 +1239,12 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Du trenger ikke spesifise
         function clearForm() {
             document.getElementById('recipeForm').reset();
             document.getElementById('recipeId').value = '';
-            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            
+            // Hide all image preview states
+            document.getElementById('imageLoadingState').classList.add('hidden');
+            document.getElementById('imageErrorState').classList.add('hidden');
+            document.getElementById('imageSuccessState').classList.add('hidden');
+            
             updateRecipeIdDisplay();
             updateDeleteButtonVisibility();
             updateActiveRecipe();
