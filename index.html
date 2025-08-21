@@ -316,19 +316,16 @@
                             <textarea id="description" rows="3" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
 
-                        <!-- Image URL -->
+                        <!-- Image Filename -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Bilde URL 
-                                <a href="https://unsplash.com" target="_blank" class="text-xs text-purple-600 hover:underline ml-2">
-                                    Finn bilder på Unsplash →
-                                </a>
+                                Bildefil
                                 <button type="button" onclick="exportImagePrompt()" class="text-xs text-indigo-600 hover:underline ml-2">
                                     🎨 Eksporter bildeprompt →
                                 </button>
                             </label>
                             <div class="flex gap-2">
-                                <input type="text" id="image" placeholder="https://images.unsplash.com/... eller ./images/bilde.jpg" 
+                                <input type="text" id="image" placeholder="bilde.jpg eller oppskrift-navn.png" 
                                     oninput="updateImagePreview()"
                                     onchange="saveToHistory()"
                                     class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
@@ -430,6 +427,14 @@
     </div>
 
     <script>
+        // Configuration
+        const CONFIG = {
+            IMAGE_PATHS: {
+                INPUT: 'images/full/',
+                PREVIEW: 'images/full/'
+            }
+        };
+
         // Database
         let recipeDatabase = {};
         
@@ -515,7 +520,7 @@
 
         // Update image preview with better error handling
         function updateImagePreview() {
-            const imageUrl = document.getElementById('image').value.trim();
+            const imageFilename = document.getElementById('image').value.trim();
             const loadingState = document.getElementById('imageLoadingState');
             const errorState = document.getElementById('imageErrorState');
             const successState = document.getElementById('imageSuccessState');
@@ -531,11 +536,12 @@
             errorState.classList.add('hidden');
             successState.classList.add('hidden');
             
-            if (!imageUrl) {
-                return; // No URL provided, show nothing
+            if (!imageFilename) {
+                return; // No filename provided, show nothing
             }
             
-            // No validation needed - allow relative URLs, absolute URLs, and data URLs
+            // Construct the full path using CONFIG
+            const imagePath = CONFIG.IMAGE_PATHS.PREVIEW + imageFilename;
             
             // Show loading state
             loadingState.classList.remove('hidden');
@@ -545,7 +551,7 @@
             
             // Set timeout for slow loading
             imageLoadTimeout = setTimeout(() => {
-                showImageError('Bildet tar for lang tid å laste. Sjekk URL-en og prøv igjen.');
+                showImageError('Bildet tar for lang tid å laste. Sjekk at filen eksisterer og prøv igjen.');
                 testImg.src = ''; // Cancel loading
             }, 10000); // 10 second timeout
             
@@ -553,30 +559,20 @@
                 clearTimeout(imageLoadTimeout);
                 // Image loaded successfully
                 loadingState.classList.add('hidden');
-                previewImg.src = imageUrl;
+                previewImg.src = imagePath;
                 successState.classList.remove('hidden');
             };
             
             testImg.onerror = function() {
                 clearTimeout(imageLoadTimeout);
-                let errorMsg = 'Kunne ikke laste bildet. ';
-                
-                // Try to provide more specific error messages
-                if (imageUrl.includes('unsplash.com')) {
-                    errorMsg += 'Sjekk at Unsplash URL-en er korrekt formatert.';
-                } else if (imageUrl.startsWith('./') || imageUrl.startsWith('../') || !imageUrl.includes('://')) {
-                    errorMsg += 'Relative URL funnet. Sjekk at bildefilen eksisterer på riktig sti.';
-                } else if (imageUrl.includes('localhost') || imageUrl.includes('127.0.0.1')) {
-                    errorMsg += 'Sjekk at lokal server kjører og at bildet er tilgjengelig.';
-                } else {
-                    errorMsg += 'Sjekk at URL-en er riktig og at bildet er tilgjengelig.';
-                }
+                let errorMsg = `Kunne ikke laste bildet "${imageFilename}". `;
+                errorMsg += `Sjekk at filen eksisterer i mappen ${CONFIG.IMAGE_PATHS.INPUT}`;
                 
                 showImageError(errorMsg);
             };
             
             // Start loading the image
-            testImg.src = imageUrl;
+            testImg.src = imagePath;
         }
         
         // Show image error
@@ -594,9 +590,9 @@
         
         // Refresh image (force reload)
         function refreshImage() {
-            const imageUrl = document.getElementById('image').value.trim();
-            if (!imageUrl) {
-                showNotification('Ingen bilde-URL å oppdatere', 'warning');
+            const imageFilename = document.getElementById('image').value.trim();
+            if (!imageFilename) {
+                showNotification('Ingen bildefil å oppdatere', 'warning');
                 return;
             }
             
@@ -614,22 +610,22 @@
                 clearTimeout(imageLoadTimeout);
             }
             
-            // Force reload by adding a cache-busting parameter
-            const separator = imageUrl.includes('?') ? '&' : '?';
-            const tempUrl = imageUrl + separator + 't=' + Date.now();
+            // Construct the full path with cache buster
+            const imagePath = CONFIG.IMAGE_PATHS.PREVIEW + imageFilename;
+            const tempPath = imagePath + '?t=' + Date.now();
             
             // Create new image element to test loading
             const testImg = new Image();
             
             // Set timeout for slow loading
             imageLoadTimeout = setTimeout(() => {
-                showImageError('Bildet tar for lang tid å laste. Sjekk URL-en og prøv igjen.');
+                showImageError('Bildet tar for lang tid å laste. Sjekk at filen eksisterer og prøv igjen.');
                 testImg.src = ''; // Cancel loading
             }, 10000); // 10 second timeout
             
             testImg.onload = function() {
                 clearTimeout(imageLoadTimeout);
-                // Once loaded with cache buster, update the preview with original URL
+                // Once loaded with cache buster, update the preview
                 updateImagePreview();
             };
             
@@ -638,7 +634,7 @@
                 updateImagePreview(); // This will show the error
             };
             
-            testImg.src = tempUrl;
+            testImg.src = tempPath;
         }
 
         // Change sort order
@@ -770,7 +766,7 @@
                     "Fortsett med alle nødvendige steg",
                     "Siste steg og serveringsforslag"
                 ],
-                image: "URL til bilde (VALGFRITT, kan være absolutt URL som https://images.unsplash.com/photo-XXX eller relativ sti som ./images/bilde.jpg)"
+                image: "Bildefilnavn (VALGFRITT, f.eks: 'bilde.jpg' eller 'oppskrift-navn.png')"
             };
         }
 
@@ -1434,8 +1430,11 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Du trenger ikke spesifise
             const description = document.getElementById('description').value.trim();
             if (description) html += `<p class="text-gray-700 mb-4">${description}</p>`;
             
-            const image = document.getElementById('image').value.trim();
-            if (image) html += `<img src="${image}" class="w-full h-48 object-cover rounded-lg mb-4">`;
+            const imageFilename = document.getElementById('image').value.trim();
+            if (imageFilename) {
+                const imagePath = CONFIG.IMAGE_PATHS.PREVIEW + imageFilename;
+                html += `<img src="${imagePath}" class="w-full h-48 object-cover rounded-lg mb-4">`;
+            }
             
             // Ingredients
             const ingredientsText = document.getElementById('ingredients').value.trim();
