@@ -147,12 +147,86 @@
         .sort-radio:checked + .sort-label:hover {
             background: rgb(245 158 11);
         }
+        /* Custom checkbox styling */
+        .custom-checkbox {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #d1d5db;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .custom-checkbox:checked {
+            background-color: rgb(239 68 68);
+            border-color: rgb(239 68 68);
+        }
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: bold;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .custom-checkbox:hover {
+            border-color: rgb(156 163 175);
+        }
+        .custom-checkbox:checked:hover {
+            background-color: rgb(220 38 38);
+            border-color: rgb(220 38 38);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
     <!-- Notification Container -->
     <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
         <!-- Notifications will be inserted here -->
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Importer oppskrifter</h3>
+            
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-3">Velg en JSON-fil med oppskrifter å importere.</p>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" id="deleteExistingRecipes" class="custom-checkbox mt-0.5">
+                        <div>
+                            <span class="font-medium text-gray-800">Slett alle eksisterende oppskrifter</span>
+                            <p class="text-xs text-gray-600 mt-1">
+                                ⚠️ Dette vil permanent slette alle nåværende oppskrifter før import.
+                                Hvis avslått, vil oppskrifter med samme ID bli overskrevet.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+                
+                <input type="file" id="importFileInput" accept=".json" class="hidden">
+                <button onclick="document.getElementById('importFileInput').click()" 
+                        class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    📂 Velg fil
+                </button>
+                <p id="selectedFileName" class="text-sm text-gray-500 mt-2 text-center"></p>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="closeImportModal()" 
+                        class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    Avbryt
+                </button>
+                <button onclick="performImport()" id="confirmImportBtn" disabled
+                        class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                    Importer
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Header -->
@@ -179,8 +253,7 @@
                         </div>
                     </div>
                     
-                    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importDatabase(event)">
-                    <button onclick="document.getElementById('importFile').click()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <button onclick="openImportModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                         📥 Importer
                     </button>
                 </div>
@@ -448,6 +521,9 @@
         
         // Image loading state
         let imageLoadTimeout = null;
+        
+        // Import state
+        let pendingImportData = null;
         
         // Default suggestions
         const defaultCategories = ['Brød', 'Bakverk', 'Kake', 'Grateng', 'Gryte', 'Kjeks', 'Grøt', 'Suppe', 'Salat', 'Kjøttkaker'];
@@ -896,6 +972,86 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Du trenger ikke spesifise
             }
         }
 
+        // Open import modal
+        function openImportModal() {
+            document.getElementById('importModal').classList.remove('hidden');
+            // Reset the form
+            document.getElementById('deleteExistingRecipes').checked = false;
+            document.getElementById('importFileInput').value = '';
+            document.getElementById('selectedFileName').textContent = '';
+            document.getElementById('confirmImportBtn').disabled = true;
+            pendingImportData = null;
+        }
+
+        // Close import modal
+        function closeImportModal() {
+            document.getElementById('importModal').classList.add('hidden');
+            document.getElementById('importFileInput').value = '';
+            pendingImportData = null;
+        }
+
+        // Perform the actual import
+        function performImport() {
+            if (!pendingImportData) return;
+            
+            const deleteExisting = document.getElementById('deleteExistingRecipes').checked;
+            
+            try {
+                const recipes = Array.isArray(pendingImportData) ? pendingImportData : [pendingImportData];
+                
+                // If delete existing is checked, clear the database
+                if (deleteExisting) {
+                    recipeDatabase = {};
+                }
+                
+                let newCount = 0;
+                let updatedCount = 0;
+                
+                recipes.forEach(recipe => {
+                    if (recipe.title) {
+                        // Check if recipe with this ID already exists
+                        if (recipe.id && recipeDatabase[recipe.id]) {
+                            // Update existing recipe
+                            recipeDatabase[recipe.id] = recipe;
+                            updatedCount++;
+                        } else {
+                            // Add new recipe (generate new ID if none provided)
+                            if (!recipe.id) {
+                                recipe.id = generateId();
+                            }
+                            recipeDatabase[recipe.id] = recipe;
+                            newCount++;
+                        }
+                    }
+                });
+                
+                saveDatabase();
+                renderRecipeList();
+                updateDataLists();
+                
+                // Build notification message
+                let message = '';
+                if (deleteExisting) {
+                    message = `Database slettet og ${newCount} oppskrifter importert!`;
+                } else {
+                    if (newCount > 0 && updatedCount > 0) {
+                        message = `${newCount} nye og ${updatedCount} oppdaterte oppskrifter!`;
+                    } else if (newCount > 0) {
+                        message = `${newCount} nye oppskrifter importert!`;
+                    } else if (updatedCount > 0) {
+                        message = `${updatedCount} oppskrifter oppdatert!`;
+                    } else {
+                        message = 'Ingen oppskrifter importert.';
+                    }
+                }
+                
+                showNotification(message, 'success');
+                closeImportModal();
+            } catch (err) {
+                showNotification('Feil ved import: ' + err.message, 'error');
+            }
+        }
+
         // Notification system
         function showNotification(message, type = 'success') {
             const container = document.getElementById('notificationContainer');
@@ -947,6 +1103,38 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Du trenger ikke spesifise
                 if (e.target === this) {
                     closePreview();
                 }
+            });
+            
+            document.getElementById('importModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeImportModal();
+                }
+            });
+            
+            // File input handler for import modal
+            document.getElementById('importFileInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                document.getElementById('selectedFileName').textContent = file.name;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        pendingImportData = JSON.parse(e.target.result);
+                        document.getElementById('confirmImportBtn').disabled = false;
+                        
+                        // Show preview of what will be imported
+                        const recipes = Array.isArray(pendingImportData) ? pendingImportData : [pendingImportData];
+                        const validRecipes = recipes.filter(r => r.title);
+                        document.getElementById('selectedFileName').textContent = 
+                            `${file.name} (${validRecipes.length} oppskrifter)`;
+                    } catch (err) {
+                        showNotification('Ugyldig JSON fil: ' + err.message, 'error');
+                        document.getElementById('confirmImportBtn').disabled = true;
+                    }
+                };
+                reader.readAsText(file);
             });
         }
 
@@ -1526,41 +1714,6 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Du trenger ikke spesifise
             
             // Close menu
             document.getElementById('exportMenu').classList.remove('show');
-        }
-
-        // Import database
-        function importDatabase(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    const recipes = Array.isArray(imported) ? imported : [imported];
-                    
-                    let count = 0;
-                    recipes.forEach(recipe => {
-                        if (recipe.title) {
-                            // Always generate new ID for imported recipes
-                            recipe.id = generateId();
-                            recipeDatabase[recipe.id] = recipe;
-                            count++;
-                        }
-                    });
-                    
-                    saveDatabase();
-                    renderRecipeList();
-                    updateDataLists();
-                    showNotification(`${count} oppskrifter importert!`, 'success');
-                } catch (err) {
-                    showNotification('Feil ved import: ' + err.message, 'error');
-                }
-                
-                // Reset file input
-                event.target.value = '';
-            };
-            reader.readAsText(file);
         }
 
         // Initialize on load
