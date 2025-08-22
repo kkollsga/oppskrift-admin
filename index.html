@@ -306,10 +306,15 @@
                             Lim inn JSON oppskrift (valgfritt)
                         </label>
                         <textarea id="jsonPaste" rows="3" placeholder='Lim inn JSON objekt her, f.eks: {"title": "Pasta", "servings": "4 porsjoner"...}'
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"></textarea>
-                        <button onclick="parseJsonInput()" class="mt-2 px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
-                            Parse JSON → Fyll skjema
-                        </button>
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"></textarea>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="parseJsonInput()" class="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
+                                Parse JSON → Fyll skjema
+                            </button>
+                            <button onclick="exportFormToJson()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
+                                Eksporter skjema → JSON
+                            </button>
+                        </div>
                     </div>
 
                     <div class="flex justify-between items-center mb-4">
@@ -1181,6 +1186,81 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             document.getElementById('categoryList').innerHTML = Array.from(categories).map(c => `<option value="${c}">`).join('');
             document.getElementById('mealList').innerHTML = Array.from(meals).map(m => `<option value="${m}">`).join('');
             document.getElementById('cuisineList').innerHTML = Array.from(cuisines).map(c => `<option value="${c}">`).join('');
+        }
+
+        // Export current form to JSON
+        function exportFormToJson() {
+            const title = document.getElementById('title').value.trim();
+            
+            if (!title) {
+                showNotification('Vennligst fyll inn minst en tittel først', 'warning');
+                return;
+            }
+            
+            // Build recipe object
+            const recipe = {
+                title: title,
+                servings: document.getElementById('servings').value.trim()
+            };
+            
+            // Add optional fields only if they have values
+            const provider = document.getElementById('provider').value.trim();
+            if (provider) recipe.provider = provider;
+            
+            const reference = document.getElementById('reference').value.trim();
+            if (reference) recipe.reference = reference;
+            
+            const pageNumber = document.getElementById('pageNumber').value.trim();
+            if (pageNumber) recipe.pageNumber = parseInt(pageNumber);
+            
+            const category = document.getElementById('category').value.trim();
+            if (category) recipe.category = category;
+            
+            const meal = document.getElementById('meal').value.trim();
+            if (meal) recipe.meal = meal;
+            
+            const cuisine = document.getElementById('cuisine').value.trim();
+            if (cuisine) recipe.cuisine = cuisine;
+            
+            const description = document.getElementById('description').value.trim();
+            if (description) recipe.description = description;
+            
+            const image = document.getElementById('image').value.trim();
+            if (image) recipe.image = image;
+            
+            // Parse and add ingredients
+            const ingredientsText = document.getElementById('ingredients').value.trim();
+            if (ingredientsText) {
+                recipe.ingredients = parseIngredients(ingredientsText);
+            }
+            
+            // Parse and add instructions
+            const instructionsText = document.getElementById('instructions').value.trim();
+            if (instructionsText) {
+                recipe.instructions = parseInstructions(instructionsText);
+            }
+            
+            // Convert to JSON string with nice formatting
+            const jsonString = JSON.stringify(recipe, null, 2);
+            
+            // Put it in the JSON paste textarea
+            document.getElementById('jsonPaste').value = jsonString;
+            
+            // Also copy to clipboard
+            navigator.clipboard.writeText(jsonString).then(() => {
+                showNotification('Oppskrift eksportert til JSON og kopiert til utklippstavlen!', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = jsonString;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showNotification('Oppskrift eksportert til JSON og kopiert til utklippstavlen!', 'success');
+            });
         }
 
         // Parse JSON input (handles both strict JSON and JavaScript object notation)
