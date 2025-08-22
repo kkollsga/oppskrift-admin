@@ -814,8 +814,8 @@
             return {
                 title: "Oppskriftens navn (PÅKREVD)",
                 servings: "Antall porsjoner, f.eks: '4 porsjoner' eller '12 stk.' (PÅKREVD)",
-                provider: "Hvem oppskriften kommer fra (VALGFRITT, f.eks: 'Bestemor')",
-                reference: "Kilde/kokebok (VALGFRITT, f.eks: 'Farmors bok')",
+                provider: "Farmor",
+                reference: "Oppskriftsbok",
                 pageNumber: "Sidenummer i kilden (VALGFRITT, tall)",
                 category: "Kategori (VALGFRITT, f.eks: 'Brød', 'Kake', 'Grateng', 'Suppe')",
                 meal: "Måltidstype (VALGFRITT, f.eks: 'Frokost', 'Middag', 'Dessert', 'Snacks')",
@@ -841,8 +841,7 @@
                     "Tredje steg",
                     "Fortsett med alle nødvendige steg",
                     "Siste steg og serveringsforslag"
-                ],
-                image: "Bildefilnavn (VALGFRITT, f.eks: 'bilde.jpg' eller 'oppskrift-navn.png')"
+                ]
             };
         }
 
@@ -926,11 +925,11 @@
             const templateJson = JSON.stringify(template, null, 2);
             
             // Add the intro and outro text
-            const fullTemplate = `Kan du lese og tolke den håndskrevne oppskriften i det vedlagte bildet? Tolk så mye som mulig fra oppskrift og bruk komplimentære kunnskap fra kjente oppskrifter fra norge på 60-80 tallet for å være sikker på at vi setter opp oppskriften riktig. Moderniser oppskriften ved å bruke moderne mål og beskrivelser. Folk på 60-70 tallet var ofte mye mer erfarne på kjøkkenet og trengte mindre hjelp. Når du er ferdig med dette konverter oppskriften til et JSON objekt med formatet under. Personen som laget oppskriften er Farmor, og kilden er Farmors oppskrifter. JSON FORMAT:
+            const fullTemplate = `Kan du lese og tolke den håndskrevne oppskriften i det vedlagte bildet? Tolk så mye som mulig fra oppskrift og bruk komplimentære kunnskap fra kjente oppskrifter fra norge på 60-80 tallet for å være sikker på at vi setter opp oppskriften riktig. Moderniser oppskriften ved å bruke moderne mål og beskrivelser. Folk var ofte mye mer erfarne på kjøkkenet og trengte mindre hjelp. Når du er ferdig med dette konverter oppskriften til et JSON objekt med formatet under. Personen som laget oppskriften er Farmor, og kilden er Oppskriftsbok. Hent sidetall ut fra bildetittel. JSON FORMAT:
 
 ${templateJson}
 
-VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Du trenger ikke spesifisere at det er fra 60-70 tallet i beskrivelsen - Alle andre felt er valgfrie - Tips i instruksjoner markeres med "TIP: " i starten av linjen - Ingredienser kan grupperes med objekter som vist i eksemplet - Moderniser gamle mål og beskrivelser`;
+VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - Alle andre felt er valgfrie - Tips i instruksjoner markeres med "TIP: " i starten av linjen - Ingredienser kan grupperes med objekter som vist i eksemplet - Moderniser gamle mål og beskrivelser`;
             
             try {
                 await navigator.clipboard.writeText(fullTemplate);
