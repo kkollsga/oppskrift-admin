@@ -311,8 +311,8 @@
                             <button onclick="parseJsonInput()" class="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
                                 Parse JSON → Fyll skjema
                             </button>
-                            <button onclick="exportFormToJson()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
-                                Eksporter skjema → JSON
+                            <button onclick="exportFormToClipboard()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
+                                📋 Kopier som JSON
                             </button>
                         </div>
                     </div>
@@ -1188,8 +1188,8 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             document.getElementById('cuisineList').innerHTML = Array.from(cuisines).map(c => `<option value="${c}">`).join('');
         }
 
-        // Export current form to JSON
-        function exportFormToJson() {
+        // Export current form to JSON clipboard
+        async function exportFormToClipboard() {
             const title = document.getElementById('title').value.trim();
             
             if (!title) {
@@ -1243,13 +1243,11 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             // Convert to JSON string with nice formatting
             const jsonString = JSON.stringify(recipe, null, 2);
             
-            // Put it in the JSON paste textarea
-            document.getElementById('jsonPaste').value = jsonString;
-            
-            // Also copy to clipboard
-            navigator.clipboard.writeText(jsonString).then(() => {
-                showNotification('Oppskrift eksportert til JSON og kopiert til utklippstavlen!', 'success');
-            }).catch(() => {
+            // Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(jsonString);
+                showNotification('Oppskrift kopiert til utklippstavlen som JSON!', 'success');
+            } catch (err) {
                 // Fallback for older browsers
                 const textarea = document.createElement('textarea');
                 textarea.value = jsonString;
@@ -1259,8 +1257,8 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showNotification('Oppskrift eksportert til JSON og kopiert til utklippstavlen!', 'success');
-            });
+                showNotification('Oppskrift kopiert til utklippstavlen som JSON!', 'success');
+            }
         }
 
         // Parse JSON input (handles both strict JSON and JavaScript object notation)
