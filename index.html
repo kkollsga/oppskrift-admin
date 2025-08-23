@@ -1927,23 +1927,20 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 html += '<div class="space-y-1">';
                 
                 let stepNumber = 1;
-                let inGroup = false;
                 
                 instructions.forEach((item, index) => {
                     if (typeof item === 'string') {
                         // Regular ungrouped instruction
                         html += `<div class="text-gray-700">${stepNumber}. ${item}</div>`;
                         stepNumber++;
-                        inGroup = false;
                     } else if (item.group && item.steps) {
-                        // Group header
+                        // Group header - NOT indented
                         html += `<div class="instruction-group-header">${item.group}:</div>`;
                         // Grouped instructions with indentation
                         item.steps.forEach(step => {
                             html += `<div class="text-gray-700 instruction-grouped">${stepNumber}. ${step}</div>`;
                             stepNumber++;
                         });
-                        inGroup = true;
                     }
                 });
                 
