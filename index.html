@@ -179,6 +179,17 @@
             background-color: rgb(220 38 38);
             border-color: rgb(220 38 38);
         }
+        /* Instruction group styling in preview */
+        .instruction-group-header {
+            font-weight: 500;
+            color: rgb(55, 65, 81);
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+        }
+        .instruction-group-header:first-child {
+            margin-top: 0;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -313,6 +324,9 @@
                             </button>
                             <button onclick="exportFormToClipboard()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
                                 📋 Kopier som JSON
+                            </button>
+                            <button onclick="exportFormToClipboardCompact()" class="px-3 py-1 bg-indigo-500 text-white text-sm rounded hover:bg-indigo-600 transition">
+                                📄 Kopier som 1 rads JSON
                             </button>
                         </div>
                     </div>
@@ -459,9 +473,9 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
                                 Fremgangsmåte 
-                                <span class="text-xs text-gray-500">(én instruksjon per linje)</span>
+                                <span class="text-xs text-gray-500">(én per linje, eller skill grupper med "---Gruppenavn---")</span>
                             </label>
-                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;Elt deigen i 10 minutter" 
+                            <textarea id="instructions" rows="6" placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;---Steking---&#10;Forvarm ovnen til 180°C&#10;Stek i 25 minutter" 
                                       onchange="saveToHistory()"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
@@ -568,7 +582,15 @@
             let formattedInstructions = '';
             if (instructionsText) {
                 const instructions = parseInstructions(instructionsText);
-                formattedInstructions = instructions.join('. ');
+                const instructionsList = [];
+                instructions.forEach(item => {
+                    if (typeof item === 'string') {
+                        instructionsList.push(item);
+                    } else if (item.group && item.steps) {
+                        instructionsList.push(...item.steps);
+                    }
+                });
+                formattedInstructions = instructionsList.join('. ');
             }
             
             // Build the AI prompt
@@ -596,6 +618,79 @@
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
                 showNotification('Bildeprompt kopiert til utklippstavlen!', 'success');
+            }
+        }
+
+        // Export form to clipboard as single-line JSON
+        async function exportFormToClipboardCompact() {
+            const title = document.getElementById('title').value.trim();
+            
+            if (!title) {
+                showNotification('Vennligst fyll inn minst en tittel først', 'warning');
+                return;
+            }
+            
+            // Build recipe object
+            const recipe = {
+                title: title,
+                servings: document.getElementById('servings').value.trim()
+            };
+            
+            // Add optional fields only if they have values
+            const provider = document.getElementById('provider').value.trim();
+            if (provider) recipe.provider = provider;
+            
+            const reference = document.getElementById('reference').value.trim();
+            if (reference) recipe.reference = reference;
+            
+            const pageNumber = document.getElementById('pageNumber').value.trim();
+            if (pageNumber) recipe.pageNumber = parseInt(pageNumber);
+            
+            const category = document.getElementById('category').value.trim();
+            if (category) recipe.category = category;
+            
+            const meal = document.getElementById('meal').value.trim();
+            if (meal) recipe.meal = meal;
+            
+            const cuisine = document.getElementById('cuisine').value.trim();
+            if (cuisine) recipe.cuisine = cuisine;
+            
+            const description = document.getElementById('description').value.trim();
+            if (description) recipe.description = description;
+            
+            const image = document.getElementById('image').value.trim();
+            if (image) recipe.image = image;
+            
+            // Parse and add ingredients
+            const ingredientsText = document.getElementById('ingredients').value.trim();
+            if (ingredientsText) {
+                recipe.ingredients = parseIngredients(ingredientsText);
+            }
+            
+            // Parse and add instructions
+            const instructionsText = document.getElementById('instructions').value.trim();
+            if (instructionsText) {
+                recipe.instructions = parseInstructions(instructionsText);
+            }
+            
+            // Convert to single-line JSON string
+            const jsonString = JSON.stringify(recipe);
+            
+            // Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(jsonString);
+                showNotification('Oppskrift kopiert som enkeltlinje JSON!', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = jsonString;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showNotification('Oppskrift kopiert som enkeltlinje JSON!', 'success');
             }
         }
 
@@ -841,11 +936,18 @@
                     }
                 ],
                 instructions: [
+                    "// For enkle oppskrifter, bruk array av strenger:",
                     "Første steg i oppskriften",
                     "Andre steg med klare instruksjoner",
-                    "Tredje steg",
-                    "Fortsett med alle nødvendige steg",
-                    "Siste steg og serveringsforslag"
+                    "// ELLER for grupperte instruksjoner, bruk objekter:",
+                    {
+                        group: "Forberedelse",
+                        steps: ["Forvarm ovnen til 180°C", "Smør formen"]
+                    },
+                    {
+                        group: "Tilberedning",
+                        steps: ["Bland ingrediensene", "Hell i formen", "Stek i 25 minutter"]
+                    }
                 ]
             };
         }
@@ -934,7 +1036,7 @@
 
 ${templateJson}
 
-VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ikke fokusere på når retten er fra, men  hvilke type oppskrift det er, hva som er spesielt med den. Vanskelighetsgrad. Hvilke smaksprofil den har, hva den passer sammen med, og andre nyttige serveringstips. - Alle andre felt er valgfrie - Tips i instruksjoner markeres med "TIP: " i starten av linjen - Ingredienser kan grupperes med objekter som vist i eksemplet - Moderniser gamle mål og beskrivelser - Er det 2 oppskrifter på siden lag 2 separate json objekter`;
+VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ikke fokusere på når retten er fra, men  hvilke type oppskrift det er, hva som er spesielt med den. Vanskelighetsgrad. Hvilke smaksprofil den har, hva den passer sammen med, og andre nyttige serveringstips. - Alle andre felt er valgfrie - Tips i instruksjoner markeres med "TIP: " i starten av linjen - Ingredienser og instruksjoner kan grupperes med objekter som vist i eksemplet - Moderniser gamle mål og beskrivelser - Er det 2 oppskrifter på siden lag 2 separate json objekter`;
             
             try {
                 await navigator.clipboard.writeText(fullTemplate);
@@ -1376,13 +1478,40 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 document.getElementById('ingredients').value = ingredientText.trim();
             }
             
-            // Handle instructions
+            // Handle instructions - now with support for grouped format
             if (recipe.instructions) {
+                let instructionText = '';
+                
                 if (Array.isArray(recipe.instructions)) {
-                    document.getElementById('instructions').value = recipe.instructions.join('\n');
+                    // Handle array format
+                    recipe.instructions.forEach(item => {
+                        if (typeof item === 'string') {
+                            // Skip comment lines from template
+                            if (!item.startsWith('//')) {
+                                instructionText += item + '\n';
+                            }
+                        } else if (item.group && item.steps) {
+                            // Handle {group: "name", steps: [...]} format
+                            instructionText += `---${item.group}---\n`;
+                            instructionText += item.steps.join('\n') + '\n';
+                        }
+                    });
                 } else if (typeof recipe.instructions === 'string') {
-                    document.getElementById('instructions').value = recipe.instructions;
+                    instructionText = recipe.instructions;
+                } else if (typeof recipe.instructions === 'object' && !Array.isArray(recipe.instructions)) {
+                    // Handle object format like {forberedelse: [...], tilberedning: [...]}
+                    Object.keys(recipe.instructions).forEach(groupName => {
+                        const steps = recipe.instructions[groupName];
+                        if (Array.isArray(steps) && steps.length > 0) {
+                            // Capitalize first letter of group name
+                            const formattedGroupName = groupName.charAt(0).toUpperCase() + groupName.slice(1);
+                            instructionText += `---${formattedGroupName}---\n`;
+                            instructionText += steps.join('\n') + '\n';
+                        }
+                    });
                 }
+                
+                document.getElementById('instructions').value = instructionText.trim();
             }
         }
 
@@ -1421,9 +1550,39 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             });
         }
 
-        // Parse instructions text
+        // Parse instructions text - now with group support
         function parseInstructions(text) {
-            return text.trim().split('\n').filter(line => line.trim()).map(line => line.trim());
+            const lines = text.trim().split('\n').filter(line => line.trim());
+            const instructions = [];
+            let currentGroup = null;
+            
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.startsWith('---') && line.endsWith('---')) {
+                    // Group header
+                    const groupName = line.slice(3, -3).trim();
+                    currentGroup = { group: groupName, steps: [] };
+                    instructions.push(currentGroup);
+                } else if (line) {
+                    // Regular instruction
+                    if (currentGroup) {
+                        currentGroup.steps.push(line);
+                    } else {
+                        instructions.push(line);
+                    }
+                }
+            });
+            
+            // If all instructions are strings, return simple array
+            if (instructions.every(item => typeof item === 'string')) {
+                return instructions;
+            }
+            
+            // Filter out empty groups
+            return instructions.filter(item => {
+                if (typeof item === 'string') return true;
+                return item.steps && item.steps.length > 0;
+            });
         }
 
         // Save recipe
@@ -1720,14 +1879,26 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 html += '</div>';
             }
             
-            // Instructions
+            // Instructions - now with group support
             const instructionsText = document.getElementById('instructions').value.trim();
             if (instructionsText) {
                 const instructions = parseInstructions(instructionsText);
                 html += '<h4 class="font-semibold text-gray-800 mb-2">Fremgangsmåte:</h4>';
                 html += '<ol class="list-decimal list-inside space-y-1">';
-                instructions.forEach(inst => {
-                    html += `<li class="text-gray-700">${inst}</li>`;
+                
+                let stepNumber = 1;
+                instructions.forEach(item => {
+                    if (typeof item === 'string') {
+                        html += `<li class="text-gray-700">${item}</li>`;
+                        stepNumber++;
+                    } else if (item.group && item.steps) {
+                        // Add group header
+                        html += `</ol><div class="instruction-group-header">${item.group}:</div><ol class="list-decimal list-inside space-y-1" start="${stepNumber}">`;
+                        item.steps.forEach(step => {
+                            html += `<li class="text-gray-700">${step}</li>`;
+                            stepNumber++;
+                        });
+                    }
                 });
                 html += '</ol>';
             }
