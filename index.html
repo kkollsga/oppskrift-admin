@@ -190,6 +190,9 @@
         .instruction-group-header:first-child {
             margin-top: 0;
         }
+        .instruction-grouped {
+            padding-left: 1.5rem;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -1916,28 +1919,35 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 html += '</div>';
             }
             
-            // Instructions - now with group support
+            // Instructions - now with group support and indentation
             const instructionsText = document.getElementById('instructions').value.trim();
             if (instructionsText) {
                 const instructions = parseInstructions(instructionsText);
                 html += '<h4 class="font-semibold text-gray-800 mb-2">Fremgangsmåte:</h4>';
-                html += '<ol class="list-decimal list-inside space-y-1">';
+                html += '<div class="space-y-1">';
                 
                 let stepNumber = 1;
-                instructions.forEach(item => {
+                let inGroup = false;
+                
+                instructions.forEach((item, index) => {
                     if (typeof item === 'string') {
-                        html += `<li class="text-gray-700">${item}</li>`;
+                        // Regular ungrouped instruction
+                        html += `<div class="text-gray-700">${stepNumber}. ${item}</div>`;
                         stepNumber++;
+                        inGroup = false;
                     } else if (item.group && item.steps) {
-                        // Add group header
-                        html += `</ol><div class="instruction-group-header">${item.group}:</div><ol class="list-decimal list-inside space-y-1" start="${stepNumber}">`;
+                        // Group header
+                        html += `<div class="instruction-group-header">${item.group}:</div>`;
+                        // Grouped instructions with indentation
                         item.steps.forEach(step => {
-                            html += `<li class="text-gray-700">${step}</li>`;
+                            html += `<div class="text-gray-700 instruction-grouped">${stepNumber}. ${step}</div>`;
                             stepNumber++;
                         });
+                        inGroup = true;
                     }
                 });
-                html += '</ol>';
+                
+                html += '</div>';
             }
             
             document.getElementById('previewContent').innerHTML = html;
