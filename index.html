@@ -634,8 +634,21 @@
                 return;
             }
             
-            // Build recipe object
+            // Generate id from title - handle Norwegian characters and special chars
+            const generatedId = 'recipe_' + title
+                .toLowerCase()
+                .replace(/æ/g, 'ae')
+                .replace(/ø/g, 'o')
+                .replace(/å/g, 'a')
+                .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
+                .replace(/\s+/g, '_')      // Replace spaces with underscores
+                .replace(/-+/g, '_')       // Replace hyphens with underscores
+                .replace(/_+/g, '_')       // Replace multiple underscores with single
+                .replace(/^_|_$/g, '');    // Remove leading/trailing underscores
+            
+            // Build recipe object with id as first key
             const recipe = {
+                id: generatedId,
                 title: title,
                 servings: document.getElementById('servings').value.trim()
             };
