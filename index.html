@@ -1445,13 +1445,13 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             updateRecipeIdDisplay();
             updateDeleteButtonVisibility();
             
-            // Handle ingredients - now with more flexible parsing
+            // Handle ingredients - now with proper end markers
             if (recipe.ingredients) {
                 let ingredientText = '';
                 
                 if (Array.isArray(recipe.ingredients)) {
                     // Handle array format
-                    recipe.ingredients.forEach(item => {
+                    recipe.ingredients.forEach((item, index) => {
                         if (typeof item === 'string') {
                             // Skip comment lines from template
                             if (!item.startsWith('//')) {
@@ -1461,17 +1461,30 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                             // Handle {group: "name", items: [...]} format
                             ingredientText += `---${item.group}---\n`;
                             ingredientText += item.items.join('\n') + '\n';
+                            
+                            // Check if we need to add end marker
+                            const nextItem = recipe.ingredients[index + 1];
+                            if (nextItem && typeof nextItem === 'string') {
+                                // Next item is ungrouped, add end marker
+                                ingredientText += '---\n';
+                            } else if (nextItem && nextItem.group) {
+                                // Next item is another group, no end marker needed
+                            } else if (index === recipe.ingredients.length - 1) {
+                                // This is the last item, no end marker needed
+                            }
                         }
                     });
                 } else if (typeof recipe.ingredients === 'object') {
                     // Handle object format like {deig: [...], fyll: [...]}
-                    Object.keys(recipe.ingredients).forEach(groupName => {
+                    const keys = Object.keys(recipe.ingredients);
+                    keys.forEach((groupName, index) => {
                         const items = recipe.ingredients[groupName];
                         if (Array.isArray(items) && items.length > 0) {
                             // Capitalize first letter of group name
                             const formattedGroupName = groupName.charAt(0).toUpperCase() + groupName.slice(1);
                             ingredientText += `---${formattedGroupName}---\n`;
                             ingredientText += items.join('\n') + '\n';
+                            // Object format doesn't support ungrouped items, so no end marker needed
                         }
                     });
                 }
@@ -1479,13 +1492,13 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 document.getElementById('ingredients').value = ingredientText.trim();
             }
             
-            // Handle instructions - now with support for grouped format
+            // Handle instructions - now with proper end markers
             if (recipe.instructions) {
                 let instructionText = '';
                 
                 if (Array.isArray(recipe.instructions)) {
                     // Handle array format
-                    recipe.instructions.forEach(item => {
+                    recipe.instructions.forEach((item, index) => {
                         if (typeof item === 'string') {
                             // Skip comment lines from template
                             if (!item.startsWith('//')) {
@@ -1495,19 +1508,32 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                             // Handle {group: "name", steps: [...]} format
                             instructionText += `---${item.group}---\n`;
                             instructionText += item.steps.join('\n') + '\n';
+                            
+                            // Check if we need to add end marker
+                            const nextItem = recipe.instructions[index + 1];
+                            if (nextItem && typeof nextItem === 'string') {
+                                // Next item is ungrouped, add end marker
+                                instructionText += '---\n';
+                            } else if (nextItem && nextItem.group) {
+                                // Next item is another group, no end marker needed
+                            } else if (index === recipe.instructions.length - 1) {
+                                // This is the last item, no end marker needed
+                            }
                         }
                     });
                 } else if (typeof recipe.instructions === 'string') {
                     instructionText = recipe.instructions;
                 } else if (typeof recipe.instructions === 'object' && !Array.isArray(recipe.instructions)) {
                     // Handle object format like {forberedelse: [...], tilberedning: [...]}
-                    Object.keys(recipe.instructions).forEach(groupName => {
+                    const keys = Object.keys(recipe.instructions);
+                    keys.forEach((groupName, index) => {
                         const steps = recipe.instructions[groupName];
                         if (Array.isArray(steps) && steps.length > 0) {
                             // Capitalize first letter of group name
                             const formattedGroupName = groupName.charAt(0).toUpperCase() + groupName.slice(1);
                             instructionText += `---${formattedGroupName}---\n`;
                             instructionText += steps.join('\n') + '\n';
+                            // Object format doesn't support ungrouped items, so no end marker needed
                         }
                     });
                 }
