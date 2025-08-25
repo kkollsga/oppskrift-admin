@@ -281,11 +281,11 @@
         </div>
     </header>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Recipe List -->
-            <div class="lg:col-span-1">
-                <div class="bg-white rounded-lg shadow-md p-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-[calc(100vh-100px)]">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+            <!-- Recipe List - Fixed height, always visible -->
+            <div class="lg:col-span-1 h-full">
+                <div class="bg-white rounded-lg shadow-md p-4 h-full flex flex-col">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold text-gray-700">Oppskrifter</h2>
                         <span class="text-sm text-gray-500" id="recipeCount">0 oppskrifter</span>
@@ -311,200 +311,203 @@
                     <button onclick="clearForm()" class="w-full mb-3 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition">
                         <i class="fas fa-plus mr-2"></i>Ny oppskrift
                     </button>
-                    <div id="recipeList" class="space-y-2 max-h-[calc(100vh-360px)] overflow-y-auto custom-scroll">
+                    <div id="recipeList" class="space-y-2 flex-1 overflow-y-auto custom-scroll">
                         <!-- Recipe items will be inserted here -->
                     </div>
                 </div>
             </div>
 
-            <!-- Recipe Form -->
-            <div class="lg:col-span-2">
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <!-- JSON Paste Area -->
-                    <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Lim inn JSON oppskrift (valgfritt)
-                        </label>
-                        <textarea id="jsonPaste" rows="3" placeholder='Lim inn JSON objekt her, f.eks: {"title": "Pasta", "servings": "4 porsjoner"...}'
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"></textarea>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="parseJsonInput()" class="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
-                                Parse JSON → Fyll skjema
-                            </button>
-                            <button onclick="exportFormToClipboard()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
-                                📋 Kopier som JSON
-                            </button>
-                            <button onclick="exportFormToClipboardCompact()" class="px-3 py-1 bg-indigo-500 text-white text-sm rounded hover:bg-indigo-600 transition">
-                                📄 Kopier som 1 rads JSON
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-700">Oppskrift Detaljer</h2>
-                        <div class="flex gap-2">
-                            <button onclick="undo()" id="undoBtn" disabled class="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                                <i class="fas fa-undo"></i>
-                            </button>
-                            <button onclick="redo()" id="redoBtn" disabled class="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                                <i class="fas fa-redo"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <form id="recipeForm" class="space-y-4">
-                        <!-- Hidden ID field -->
-                        <input type="hidden" id="recipeId">
-                        
-                        <!-- Title -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tittel *</label>
-                            <input type="text" id="title" required onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                            <div class="flex items-center gap-2 mt-1">
-                                <p id="recipeIdDisplay" class="text-xs text-gray-500"></p>
-                                <button type="button" id="regenerateIdBtn" onclick="regenerateId()" class="hidden text-gray-400 hover:text-gray-600 transition" title="Generer ny ID">
-                                    <i class="fas fa-sync-alt text-xs"></i>
+            <!-- Recipe Form - Scrollable container -->
+            <div class="lg:col-span-2 h-full">
+                <div class="bg-white rounded-lg shadow-md h-full flex flex-col">
+                    <div id="recipeFormContainer" class="flex-1 overflow-y-auto custom-scroll p-6">
+                        <!-- JSON Paste Area -->
+                        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Lim inn JSON oppskrift (valgfritt)
+                            </label>
+                            <textarea id="jsonPaste" rows="3" placeholder='Lim inn JSON objekt her, f.eks: {"title": "Pasta", "servings": "4 porsjoner"...}'
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"></textarea>
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="parseJsonInput()" class="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
+                                    Parse JSON → Fyll skjema
+                                </button>
+                                <button onclick="exportFormToClipboard()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
+                                    📋 Kopier som JSON
+                                </button>
+                                <button onclick="exportFormToClipboardCompact()" class="px-3 py-1 bg-indigo-500 text-white text-sm rounded hover:bg-indigo-600 transition">
+                                    📄 Kopier som 1 rads JSON
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Provider and Reference with Page Number -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Oppskrift fra</label>
-                                <input type="text" id="provider" placeholder="F.eks: Bestemor" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-gray-700">Oppskrift Detaljer</h2>
+                            <div class="flex gap-2">
+                                <button onclick="undo()" id="undoBtn" disabled class="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                                <button onclick="redo()" id="redoBtn" disabled class="px-3 py-1 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    <i class="fas fa-redo"></i>
+                                </button>
                             </div>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div class="col-span-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Kilde</label>
-                                    <input type="text" id="reference" placeholder="F.eks: Farmors bok" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <form id="recipeForm" class="space-y-4">
+                            <!-- Hidden ID field -->
+                            <input type="hidden" id="recipeId">
+                            
+                            <!-- Title -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tittel *</label>
+                                <input type="text" id="title" required onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <div class="flex items-center gap-2 mt-1">
+                                    <p id="recipeIdDisplay" class="text-xs text-gray-500"></p>
+                                    <button type="button" id="regenerateIdBtn" onclick="regenerateId()" class="hidden text-gray-400 hover:text-gray-600 transition" title="Generer ny ID">
+                                        <i class="fas fa-sync-alt text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Provider and Reference with Page Number -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Oppskrift fra</label>
+                                    <input type="text" id="provider" placeholder="F.eks: Bestemor" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div class="col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Kilde</label>
+                                        <input type="text" id="reference" placeholder="F.eks: Farmors bok" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Side</label>
+                                        <input type="number" id="pageNumber" placeholder="45" min="1" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Servings -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Porsjoner *</label>
+                                <input type="text" id="servings" required placeholder="F.eks: 4 porsjoner" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+
+                            <!-- Category, Meal, Cuisine -->
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                                    <input type="text" id="category" list="categoryList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <datalist id="categoryList"></datalist>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Side</label>
-                                    <input type="number" id="pageNumber" placeholder="45" min="1" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Måltid</label>
+                                    <input type="text" id="meal" list="mealList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <datalist id="mealList"></datalist>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Kjøkken</label>
+                                    <input type="text" id="cuisine" list="cuisineList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <datalist id="cuisineList"></datalist>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Servings -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Porsjoner *</label>
-                            <input type="text" id="servings" required placeholder="F.eks: 4 porsjoner" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <!-- Category, Meal, Cuisine -->
-                        <div class="grid grid-cols-3 gap-4">
+                            <!-- Description -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                                <input type="text" id="category" list="categoryList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                <datalist id="categoryList"></datalist>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
+                                <textarea id="description" rows="3" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Måltid</label>
-                                <input type="text" id="meal" list="mealList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                <datalist id="mealList"></datalist>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Kjøkken</label>
-                                <input type="text" id="cuisine" list="cuisineList" onchange="saveToHistory()" class="datalist-input w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                <datalist id="cuisineList"></datalist>
-                            </div>
-                        </div>
 
-                        <!-- Description -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Beskrivelse</label>
-                            <textarea id="description" rows="3" onchange="saveToHistory()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
-                        </div>
-
-                        <!-- Image Filename -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Bildefil
-                                <button type="button" onclick="exportImagePrompt()" class="text-xs text-indigo-600 hover:underline ml-2">
-                                    🎨 Eksporter bildeprompt →
-                                </button>
-                            </label>
-                            <div class="flex gap-2">
-                                <input type="text" id="image" placeholder="bilde.jpg eller oppskrift-navn.png" 
-                                    oninput="updateImagePreview()"
-                                    onchange="saveToHistory()"
-                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                                <button type="button" onclick="refreshImage()" title="Last inn bilde på nytt" 
-                                    class="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
-                                    <i class="fas fa-sync-alt text-gray-600"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Image Preview Container -->
-                            <div id="imagePreviewContainer" class="mt-3">
-                                <!-- Loading state -->
-                                <div id="imageLoadingState" class="hidden border rounded-lg p-8 bg-gray-50">
-                                    <div class="flex flex-col items-center justify-center text-gray-500">
-                                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                                        <p class="text-sm">Laster bilde...</p>
-                                    </div>
+                            <!-- Image Filename -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Bildefil
+                                    <button type="button" onclick="exportImagePrompt()" class="text-xs text-indigo-600 hover:underline ml-2">
+                                        🎨 Eksporter bildeprompt →
+                                    </button>
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="image" placeholder="bilde.jpg eller oppskrift-navn.png" 
+                                        oninput="updateImagePreview()"
+                                        onchange="saveToHistory()"
+                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                    <button type="button" onclick="refreshImage()" title="Last inn bilde på nytt" 
+                                        class="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                                        <i class="fas fa-sync-alt text-gray-600"></i>
+                                    </button>
                                 </div>
                                 
-                                <!-- Error state -->
-                                <div id="imageErrorState" class="hidden border border-red-200 rounded-lg p-4 bg-red-50">
-                                    <div class="flex items-start gap-3">
-                                        <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
-                                        <div class="flex-1">
-                                            <p class="text-sm font-medium text-red-800">Kunne ikke laste bilde</p>
-                                            <p id="imageErrorMessage" class="text-xs text-red-600 mt-1"></p>
+                                <!-- Image Preview Container -->
+                                <div id="imagePreviewContainer" class="mt-3">
+                                    <!-- Loading state -->
+                                    <div id="imageLoadingState" class="hidden border rounded-lg p-8 bg-gray-50">
+                                        <div class="flex flex-col items-center justify-center text-gray-500">
+                                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                            <p class="text-sm">Laster bilde...</p>
                                         </div>
                                     </div>
-                                </div>
-                                
-                                <!-- Success state -->
-                                <div id="imageSuccessState" class="hidden">
-                                    <div class="border rounded-lg overflow-hidden bg-gray-50">
-                                        <img id="imagePreview" src="" alt="Forhåndsvisning" class="image-preview w-full">
+                                    
+                                    <!-- Error state -->
+                                    <div id="imageErrorState" class="hidden border border-red-200 rounded-lg p-4 bg-red-50">
+                                        <div class="flex items-start gap-3">
+                                            <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                                            <div class="flex-1">
+                                                <p class="text-sm font-medium text-red-800">Kunne ikke laste bilde</p>
+                                                <p id="imageErrorMessage" class="text-xs text-red-600 mt-1"></p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-gray-500 mt-1">Bildeforhåndsvisning</p>
+                                    
+                                    <!-- Success state -->
+                                    <div id="imageSuccessState" class="hidden">
+                                        <div class="border rounded-lg overflow-hidden bg-gray-50">
+                                            <img id="imagePreview" src="" alt="Forhåndsvisning" class="image-preview w-full">
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Bildeforhåndsvisning</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Ingredients -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Ingredienser 
-                                <span class="text-xs text-gray-500">(én per linje, skill grupper med "---Gruppenavn---", avslutt gruppe med "---")</span>
-                            </label>
-                            <textarea id="ingredients" rows="6" 
-                                placeholder="500 g mel&#10;2 dl melk&#10;---Fyll---&#10;100 g sukker&#10;2 ss kanel&#10;---&#10;1 egg til pensling" 
-                                onchange="saveToHistory()"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"></textarea>
-                        </div>
-
-                        <!-- Instructions -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                Fremgangsmåte 
-                                <span class="text-xs text-gray-500">(én per linje, skill grupper med "---Gruppenavn---", avslutt gruppe med "---")</span>
-                            </label>
-                            <textarea id="instructions" rows="6" 
-                                placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;---Steking---&#10;Forvarm ovnen til 180°C&#10;Stek i 25 minutter&#10;---&#10;Server varm med smør" 
-                                onchange="saveToHistory()"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>                        </div>
-
-                        <!-- Form Actions -->
-                        <div class="flex justify-between pt-4 border-t">
-                            <button type="button" onclick="previewRecipe()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-                                👁 Forhåndsvis
-                            </button>
-                            <div class="flex gap-2">
-                                <button type="button" onclick="deleteRecipe()" id="deleteBtn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                                    🗑 Slett
-                                </button>
-                                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
-                                    💾 Lagre
-                                </button>
+                            <!-- Ingredients -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Ingredienser 
+                                    <span class="text-xs text-gray-500">(én per linje, skill grupper med "---Gruppenavn---", avslutt gruppe med "---")</span>
+                                </label>
+                                <textarea id="ingredients" rows="6" 
+                                    placeholder="500 g mel&#10;2 dl melk&#10;---Fyll---&#10;100 g sukker&#10;2 ss kanel&#10;---&#10;1 egg til pensling" 
+                                    onchange="saveToHistory()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"></textarea>
                             </div>
-                        </div>
-                    </form>
+
+                            <!-- Instructions -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Fremgangsmåte 
+                                    <span class="text-xs text-gray-500">(én per linje, skill grupper med "---Gruppenavn---", avslutt gruppe med "---")</span>
+                                </label>
+                                <textarea id="instructions" rows="6" 
+                                    placeholder="Bland de tørre ingrediensene&#10;Tilsett melk og egg&#10;---Steking---&#10;Forvarm ovnen til 180°C&#10;Stek i 25 minutter&#10;---&#10;Server varm med smør" 
+                                    onchange="saveToHistory()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="flex justify-between pt-4 border-t">
+                                <button type="button" onclick="previewRecipe()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                                    👁 Forhåndsvis
+                                </button>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="deleteRecipe()" id="deleteBtn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                        🗑 Slett
+                                    </button>
+                                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                        💾 Lagre
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -527,6 +530,7 @@
             </div>
         </div>
     </div>
+
 
     <script>
         // Configuration
@@ -886,6 +890,9 @@
             }
             
             updateHistoryButtons();
+            
+            // Also save to localStorage to persist current state
+            saveDatabase();
         }
 
         // Get current form state
@@ -1241,6 +1248,27 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             renderRecipeList();
             updateDataLists();
             
+            // Restore form state if available
+            if (window.pendingFormState) {
+                setTimeout(() => {
+                    applyFormState(window.pendingFormState);
+                    updateActiveRecipe();
+                    updateImagePreview();
+                    // Clean up
+                    delete window.pendingFormState;
+                    
+                    // Restore scroll position after form is populated
+                    setTimeout(() => {
+                        restoreScrollPosition();
+                    }, 50);
+                }, 100);
+            } else {
+                // Restore scroll position after page load
+                setTimeout(() => {
+                    restoreScrollPosition();
+                }, 100);
+            }
+            
             // Initialize history with empty state
             saveToHistory();
             
@@ -1304,6 +1332,16 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             return 'recipe_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         }
 
+        // Save database to localStorage
+        function saveDatabase() {
+            const dataToSave = {
+                recipes: recipeDatabase,
+                scrollPosition: savedScrollPosition,
+                currentFormState: getFormState() // Add current form state
+            };
+            localStorage.setItem('recipeDatabase', JSON.stringify(dataToSave));
+        }
+
         // Load database from localStorage
         function loadDatabase() {
             const stored = localStorage.getItem('recipeDatabase');
@@ -1316,6 +1354,12 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                         // New format
                         recipeDatabase = data.recipes || {};
                         savedScrollPosition = data.scrollPosition || 0;
+                        
+                        // Restore current form state if available
+                        if (data.currentFormState) {
+                            // Store it temporarily to apply after UI is ready
+                            window.pendingFormState = data.currentFormState;
+                        }
                     } else {
                         // Old format - assume data is the recipes directly
                         recipeDatabase = data;
@@ -1327,15 +1371,6 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                     savedScrollPosition = 0;
                 }
             }
-        }
-
-        // Save database to localStorage
-        function saveDatabase() {
-            const dataToSave = {
-                recipes: recipeDatabase,
-                scrollPosition: savedScrollPosition
-            };
-            localStorage.setItem('recipeDatabase', JSON.stringify(dataToSave));
         }
 
         // Update datalist suggestions
@@ -1812,32 +1847,6 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             }
         }
 
-        // Clear form
-        function clearForm() {
-            // Save current scroll position before clearing
-            saveScrollPosition();
-            
-            document.getElementById('recipeForm').reset();
-            document.getElementById('recipeId').value = '';
-            
-            // Hide all image preview states
-            document.getElementById('imageLoadingState').classList.add('hidden');
-            document.getElementById('imageErrorState').classList.add('hidden');
-            document.getElementById('imageSuccessState').classList.add('hidden');
-            
-            updateRecipeIdDisplay();
-            updateDeleteButtonVisibility();
-            updateActiveRecipe();
-            
-            // Restore the saved scroll position immediately
-            restoreScrollPosition();
-            
-            // Reset history
-            history = [];
-            historyIndex = -1;
-            saveToHistory();
-        }
-
         // Update active recipe highlight
         function updateActiveRecipe() {
             const currentId = document.getElementById('recipeId').value;
@@ -1944,13 +1953,18 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
 
         // Save current scroll position
         function saveScrollPosition() {
-            savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-            saveDatabase(); // Persist immediately
+            const container = document.getElementById('recipeFormContainer');
+            savedScrollPosition = container ? container.scrollTop : 0;
+            // Save to localStorage as well
+            saveDatabase();
         }
 
         // Restore saved scroll position
         function restoreScrollPosition() {
-            window.scrollTo(0, savedScrollPosition);
+            const container = document.getElementById('recipeFormContainer');
+            if (container) {
+                container.scrollTop = savedScrollPosition;
+            }
         }
 
         // Edit recipe
@@ -1964,7 +1978,7 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             populateForm(recipe);
             updateActiveRecipe();
             
-            // Restore the saved scroll position immediately
+            // Restore the saved scroll position
             restoreScrollPosition();
             
             showNotification(`Redigerer "${recipe.title}"`, 'info');
@@ -1973,6 +1987,32 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             history = [];
             historyIndex = -1;
             saveToHistory();
+        }
+
+        // Clear form
+        function clearForm() {
+            // Save current scroll position before clearing
+            saveScrollPosition();
+            
+            document.getElementById('recipeForm').reset();
+            document.getElementById('recipeId').value = '';
+            
+            // Hide all image preview states
+            document.getElementById('imageLoadingState').classList.add('hidden');
+            document.getElementById('imageErrorState').classList.add('hidden');
+            document.getElementById('imageSuccessState').classList.add('hidden');
+            
+            updateRecipeIdDisplay();
+            updateDeleteButtonVisibility();
+            updateActiveRecipe();
+            
+            // Restore the saved scroll position
+            restoreScrollPosition();
+            
+            // Reset history
+            history = [];
+            historyIndex = -1;
+            saveToHistory(); // This will also clear the saved form state
         }
 
         // Preview recipe
