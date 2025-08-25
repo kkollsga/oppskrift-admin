@@ -526,8 +526,10 @@
         // Configuration
         const CONFIG = {
             IMAGE_PATHS: {
-                INPUT: 'images/lo/',
-                PREVIEW: 'images/lo/'
+                // Paths based on file extension
+                'png': 'images/full/',
+                'jpg': 'images/low/',
+                'default': 'images/low/'
             }
         };
 
@@ -713,6 +715,19 @@
             }
         }
 
+        // Get image path based on file extension
+        function getImagePath(filename) {
+            if (!filename) return '';
+            
+            // Extract file extension
+            const extension = filename.split('.').pop().toLowerCase();
+            
+            // Return path based on extension, or default if not found
+            const basePath = CONFIG.IMAGE_PATHS[extension] || CONFIG.IMAGE_PATHS['default'];
+            
+            return basePath + filename;
+        }
+
         // Update image preview with better error handling
         function updateImagePreview() {
             const imageFilename = document.getElementById('image').value.trim();
@@ -735,8 +750,8 @@
                 return; // No filename provided, show nothing
             }
             
-            // Construct the full path using CONFIG
-            const imagePath = CONFIG.IMAGE_PATHS.PREVIEW + imageFilename;
+            // Construct the full path using file extension
+            const imagePath = getImagePath(imageFilename);
             
             // Show loading state
             loadingState.classList.remove('hidden');
@@ -760,8 +775,11 @@
             
             testImg.onerror = function() {
                 clearTimeout(imageLoadTimeout);
+                const extension = imageFilename.split('.').pop().toLowerCase();
+                const expectedPath = CONFIG.IMAGE_PATHS[extension] || CONFIG.IMAGE_PATHS['default'];
+                
                 let errorMsg = `Kunne ikke laste bildet "${imageFilename}". `;
-                errorMsg += `Sjekk at filen eksisterer i mappen ${CONFIG.IMAGE_PATHS.INPUT}`;
+                errorMsg += `Sjekk at filen eksisterer i mappen ${expectedPath}`;
                 
                 showImageError(errorMsg);
             };
@@ -805,8 +823,8 @@
                 clearTimeout(imageLoadTimeout);
             }
             
-            // Construct the full path with cache buster
-            const imagePath = CONFIG.IMAGE_PATHS.PREVIEW + imageFilename;
+            // Construct the full path with cache buster using file extension
+            const imagePath = getImagePath(imageFilename);
             const tempPath = imagePath + '?t=' + Date.now();
             
             // Create new image element to test loading
@@ -1911,7 +1929,7 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             
             const imageFilename = document.getElementById('image').value.trim();
             if (imageFilename) {
-                const imagePath = CONFIG.IMAGE_PATHS.PREVIEW + imageFilename;
+                const imagePath = getImagePath(imageFilename);
                 html += `<img src="${imagePath}" class="w-full h-48 object-cover rounded-lg mb-4">`;
             }
             
