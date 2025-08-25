@@ -258,6 +258,12 @@
                             📤 Eksporter ▼
                         </button>
                         <div id="exportMenu" class="dropdown-menu">
+                            <div class="px-4 py-2 border-b bg-gray-50">
+                                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input type="checkbox" id="convertPngToJpg" checked class="rounded">
+                                    <span class="text-gray-700">🔄 Konverter .png til .jpg</span>
+                                </label>
+                            </div>
                             <button onclick="exportDatabase('file')" class="w-full text-left px-4 py-2 hover:bg-gray-100 border-b">
                                 💾 Eksporter til fil
                             </button>
@@ -1464,25 +1470,60 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
 
         // Populate form with recipe data
         function populateForm(recipe) {
-            document.getElementById('recipeId').value = recipe.id || '';
-            document.getElementById('title').value = recipe.title || '';
-            document.getElementById('provider').value = recipe.provider || '';
-            document.getElementById('reference').value = recipe.reference || '';
-            document.getElementById('pageNumber').value = recipe.pageNumber || '';
-            document.getElementById('servings').value = recipe.servings || '';
-            document.getElementById('category').value = recipe.category || '';
-            document.getElementById('meal').value = recipe.meal || '';
-            document.getElementById('cuisine').value = recipe.cuisine || '';
-            document.getElementById('description').value = recipe.description || '';
-            document.getElementById('image').value = recipe.image || '';
+            // Only update fields that are explicitly provided in the input JSON
             
-            // Update image preview
-            updateImagePreview();
+            if ('id' in recipe) {
+                document.getElementById('recipeId').value = recipe.id || '';
+            }
+            
+            if ('title' in recipe) {
+                document.getElementById('title').value = recipe.title || '';
+            }
+            
+            if ('provider' in recipe) {
+                document.getElementById('provider').value = recipe.provider || '';
+            }
+            
+            if ('reference' in recipe) {
+                document.getElementById('reference').value = recipe.reference || '';
+            }
+            
+            if ('pageNumber' in recipe) {
+                document.getElementById('pageNumber').value = recipe.pageNumber || '';
+            }
+            
+            if ('servings' in recipe) {
+                document.getElementById('servings').value = recipe.servings || '';
+            }
+            
+            if ('category' in recipe) {
+                document.getElementById('category').value = recipe.category || '';
+            }
+            
+            if ('meal' in recipe) {
+                document.getElementById('meal').value = recipe.meal || '';
+            }
+            
+            if ('cuisine' in recipe) {
+                document.getElementById('cuisine').value = recipe.cuisine || '';
+            }
+            
+            if ('description' in recipe) {
+                document.getElementById('description').value = recipe.description || '';
+            }
+            
+            if ('image' in recipe) {
+                document.getElementById('image').value = recipe.image || '';
+                // Update image preview only if image field was provided
+                updateImagePreview();
+            }
+            
+            // Always update these UI elements
             updateRecipeIdDisplay();
             updateDeleteButtonVisibility();
             
-            // Handle ingredients - now with proper end markers
-            if (recipe.ingredients) {
+            // Handle ingredients - only if provided
+            if ('ingredients' in recipe && recipe.ingredients) {
                 let ingredientText = '';
                 
                 if (Array.isArray(recipe.ingredients)) {
@@ -1528,8 +1569,8 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 document.getElementById('ingredients').value = ingredientText.trim();
             }
             
-            // Handle instructions - now with proper end markers
-            if (recipe.instructions) {
+            // Handle instructions - only if provided
+            if ('instructions' in recipe && recipe.instructions) {
                 let instructionText = '';
                 
                 if (Array.isArray(recipe.instructions)) {
@@ -1989,6 +2030,25 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             document.getElementById('previewModal').classList.add('hidden');
         }
 
+        // Convert PNG extensions to JPG if toggle is enabled
+        function convertImageExtensions(recipe) {
+            const shouldConvert = document.getElementById('convertPngToJpg').checked;
+            
+            if (!shouldConvert || !recipe.image) {
+                return recipe;
+            }
+            
+            // Create a copy to avoid modifying the original
+            const modifiedRecipe = { ...recipe };
+            
+            // Convert .png to .jpg (case insensitive)
+            if (modifiedRecipe.image.toLowerCase().endsWith('.png')) {
+                modifiedRecipe.image = modifiedRecipe.image.replace(/\.png$/i, '.jpg');
+            }
+            
+            return modifiedRecipe;
+        }
+
         // Export database (to file or clipboard)
         async function exportDatabase(method) {
             const recipes = getSortedRecipes(); // Use sorted recipes for export
@@ -1998,8 +2058,11 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 return;
             }
             
+            // Apply PNG to JPG conversion if enabled
+            const processedRecipes = recipes.map(recipe => convertImageExtensions(recipe));
+            
             // Create compact format
-            const compactJson = recipes.map(recipe => 
+            const compactJson = processedRecipes.map(recipe => 
                 JSON.stringify(recipe)
             ).join(',\n');
             
@@ -2009,7 +2072,11 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 // Copy to clipboard
                 try {
                     await navigator.clipboard.writeText(jsonContent);
-                    showNotification(`${recipes.length} oppskrifter kopiert til utklippstavlen!`, 'success');
+                    const convertEnabled = document.getElementById('convertPngToJpg').checked;
+                    const message = convertEnabled ? 
+                        `${recipes.length} oppskrifter kopiert til utklippstavlen! (.png → .jpg konvertering aktivert)` :
+                        `${recipes.length} oppskrifter kopiert til utklippstavlen!`;
+                    showNotification(message, 'success');
                 } catch (err) {
                     // Fallback for older browsers
                     const textarea = document.createElement('textarea');
@@ -2020,7 +2087,11 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                     textarea.select();
                     document.execCommand('copy');
                     document.body.removeChild(textarea);
-                    showNotification(`${recipes.length} oppskrifter kopiert til utklippstavlen!`, 'success');
+                    const convertEnabled = document.getElementById('convertPngToJpg').checked;
+                    const message = convertEnabled ? 
+                        `${recipes.length} oppskrifter kopiert til utklippstavlen! (.png → .jpg konvertering aktivert)` :
+                        `${recipes.length} oppskrifter kopiert til utklippstavlen!`;
+                    showNotification(message, 'success');
                 }
             } else {
                 // Export to file
@@ -2034,7 +2105,11 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                showNotification(`${recipes.length} oppskrifter eksportert til fil!`, 'success');
+                const convertEnabled = document.getElementById('convertPngToJpg').checked;
+                const message = convertEnabled ? 
+                    `${recipes.length} oppskrifter eksportert til fil! (.png → .jpg konvertering aktivert)` :
+                    `${recipes.length} oppskrifter eksportert til fil!`;
+                showNotification(message, 'success');
             }
             
             // Close menu
