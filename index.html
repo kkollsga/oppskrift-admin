@@ -549,6 +549,9 @@
         let history = [];
         let historyIndex = -1;
         let isApplyingHistory = false;
+
+        // Scroll position management
+        let savedScrollPosition = 0;
         
         // Image loading state
         let imageLoadTimeout = null;
@@ -1305,13 +1308,34 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
         function loadDatabase() {
             const stored = localStorage.getItem('recipeDatabase');
             if (stored) {
-                recipeDatabase = JSON.parse(stored);
+                try {
+                    const data = JSON.parse(stored);
+                    
+                    // Handle both old format (direct recipes) and new format (with scrollPosition)
+                    if (data.recipes) {
+                        // New format
+                        recipeDatabase = data.recipes || {};
+                        savedScrollPosition = data.scrollPosition || 0;
+                    } else {
+                        // Old format - assume data is the recipes directly
+                        recipeDatabase = data;
+                        savedScrollPosition = 0;
+                    }
+                } catch (e) {
+                    // Fallback for corrupted data
+                    recipeDatabase = {};
+                    savedScrollPosition = 0;
+                }
             }
         }
 
         // Save database to localStorage
         function saveDatabase() {
-            localStorage.setItem('recipeDatabase', JSON.stringify(recipeDatabase));
+            const dataToSave = {
+                recipes: recipeDatabase,
+                scrollPosition: savedScrollPosition
+            };
+            localStorage.setItem('recipeDatabase', JSON.stringify(dataToSave));
         }
 
         // Update datalist suggestions
@@ -1790,6 +1814,9 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
 
         // Clear form
         function clearForm() {
+            // Save current scroll position before clearing
+            saveScrollPosition();
+            
             document.getElementById('recipeForm').reset();
             document.getElementById('recipeId').value = '';
             
@@ -1801,6 +1828,9 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             updateRecipeIdDisplay();
             updateDeleteButtonVisibility();
             updateActiveRecipe();
+            
+            // Restore the saved scroll position immediately
+            restoreScrollPosition();
             
             // Reset history
             history = [];
@@ -1912,13 +1942,31 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             document.getElementById('recipeCount').textContent = `${recipes.length} oppskrifter`;
         }
 
+        // Save current scroll position
+        function saveScrollPosition() {
+            savedScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            saveDatabase(); // Persist immediately
+        }
+
+        // Restore saved scroll position
+        function restoreScrollPosition() {
+            window.scrollTo(0, savedScrollPosition);
+        }
+
         // Edit recipe
         function editRecipe(id) {
             const recipe = recipeDatabase[id];
             if (!recipe) return;
+            
+            // Save current scroll position before switching
+            saveScrollPosition();
+            
             populateForm(recipe);
             updateActiveRecipe();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Restore the saved scroll position immediately
+            restoreScrollPosition();
+            
             showNotification(`Redigerer "${recipe.title}"`, 'info');
             
             // Reset history for this recipe
