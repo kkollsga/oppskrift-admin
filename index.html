@@ -348,6 +348,9 @@
                                     <button onclick="parseJsonInput()" class="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition">
                                         Parse JSON → Fyll skjema
                                     </button>
+                                    <button onclick="processMultipleRecipes()" class="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition">
+                                        🔄 Multi-oppskrift parsing
+                                    </button>
                                     <button onclick="exportFormToClipboard()" class="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition">
                                         📋 Kopier som JSON
                                     </button>
@@ -1492,6 +1495,176 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             }
         }
 
+        // Process multiple recipes for selective updates
+        function processMultipleRecipes() {
+            const jsonInput = document.getElementById('jsonPaste').value.trim();
+            if (!jsonInput) {
+                showNotification('Lim inn JSON med oppskrifter først', 'warning');
+                return;
+            }
+            
+            try {
+                let data;
+                
+                // Parse JSON with same logic as parseJsonInput
+                try {
+                    data = JSON.parse(jsonInput);
+                } catch (e) {
+                    // Try to extract just the object if it's wrapped
+                    let cleanedInput = jsonInput;
+                    
+                    // Remove wrapping like "recipe_updates": [...] or recipe_updates: [...]
+                    const wrapperMatch = cleanedInput.match(/^["\']?[\w_]+["\']?\s*:\s*(\[[\s\S]*\])\s*$/);
+                    if (wrapperMatch) {
+                        cleanedInput = wrapperMatch[1];
+                    }
+                    
+                    // If that fails, try cleaning up JavaScript object notation
+                    try {
+                        const jsObjectStr = cleanedInput
+                            .replace(/(\w+):/g, '"$1":')
+                            .replace(/:\s*'([^']*)'/g, ':"$1"')
+                            .replace(/,\s*}/g, '}')
+                            .replace(/,\s*]/g, ']');
+                        
+                        data = JSON.parse(jsObjectStr);
+                    } catch (parseError) {
+                        data = eval('(' + cleanedInput + ')');
+                    }
+                }
+                
+                // Ensure data is an array
+                if (!Array.isArray(data)) {
+                    showNotification('Input må være en array av oppskrifter', 'error');
+                    return;
+                }
+                
+                let updatedCount = 0;
+                let skippedCount = 0;
+                let errorCount = 0;
+                const updatedRecipes = [];
+                
+                data.forEach((updateData, index) => {
+                    try {
+                        // Check if update object has an id
+                        if (!updateData.id) {
+                            console.warn(`Recipe at index ${index} missing id field, skipping`);
+                            skippedCount++;
+                            return;
+                        }
+                        
+                        // Check if recipe exists in database
+                        if (!recipeDatabase[updateData.id]) {
+                            console.warn(`Recipe with id "${updateData.id}" not found, skipping`);
+                            skippedCount++;
+                            return;
+                        }
+                        
+                        // Get existing recipe
+                        const existingRecipe = recipeDatabase[updateData.id];
+                        
+                        // Selectively update only provided fields
+                        const updatedRecipe = { ...existingRecipe };
+                        let hasChanges = false;
+                        
+                        // List of updatable fields
+                        const updatableFields = [
+                            'title', 'provider', 'reference', 'pageNumber', 'servings',
+                            'category', 'meal', 'cuisine', 'description', 'image',
+                            'ingredients', 'instructions'
+                        ];
+                        
+                        updatableFields.forEach(field => {
+                            if (field in updateData && updateData[field] !== undefined) {
+                                // Special handling for ingredients and instructions to maintain structure
+                                if (field === 'ingredients' && updateData[field]) {
+                                    if (typeof updateData[field] === 'string') {
+                                        updatedRecipe[field] = parseIngredients(updateData[field]);
+                                    } else {
+                                        updatedRecipe[field] = updateData[field];
+                                    }
+                                    hasChanges = true;
+                                } else if (field === 'instructions' && updateData[field]) {
+                                    if (typeof updateData[field] === 'string') {
+                                        updatedRecipe[field] = parseInstructions(updateData[field]);
+                                    } else {
+                                        updatedRecipe[field] = updateData[field];
+                                    }
+                                    hasChanges = true;
+                                } else if (updateData[field] !== existingRecipe[field]) {
+                                    updatedRecipe[field] = updateData[field];
+                                    hasChanges = true;
+                                }
+                            }
+                        });
+                        
+                        if (hasChanges) {
+                            // Update the database
+                            recipeDatabase[updateData.id] = updatedRecipe;
+                            updatedRecipes.push(updatedRecipe.title || updateData.id);
+                            updatedCount++;
+                        }
+                        
+                    } catch (err) {
+                        console.error(`Error processing recipe at index ${index}:`, err);
+                        errorCount++;
+                    }
+                });
+                
+                if (updatedCount > 0) {
+                    // Save database
+                    saveDatabase();
+                    
+                    // Update UI
+                    renderRecipeList();
+                    updateDataLists();
+                    
+                    // If currently editing one of the updated recipes, refresh the form
+                    const currentId = document.getElementById('recipeId').value;
+                    if (currentId && recipeDatabase[currentId]) {
+                        populateForm(recipeDatabase[currentId]);
+                        updateImagePreview();
+                    }
+                }
+                
+                // Clear the JSON input
+                document.getElementById('jsonPaste').value = '';
+                
+                // Show results
+                let message = '';
+                if (updatedCount > 0) {
+                    message = `${updatedCount} oppskrifter oppdatert`;
+                    if (updatedRecipes.length <= 3) {
+                        message += `: ${updatedRecipes.join(', ')}`;
+                    }
+                }
+                if (skippedCount > 0) {
+                    if (message) message += '. ';
+                    message += `${skippedCount} hoppet over (mangler ID eller finnes ikke)`;
+                }
+                if (errorCount > 0) {
+                    if (message) message += '. ';
+                    message += `${errorCount} feil`;
+                }
+                
+                if (updatedCount > 0) {
+                    showNotification(message, 'success');
+                    // Save to history if we're currently editing a recipe
+                    const currentId = document.getElementById('recipeId').value;
+                    if (currentId) {
+                        saveToHistory();
+                    }
+                } else if (skippedCount > 0 || errorCount > 0) {
+                    showNotification(message, 'warning');
+                } else {
+                    showNotification('Ingen oppskrifter ble oppdatert', 'info');
+                }
+                
+            } catch (e) {
+                showNotification('Ugyldig format: ' + e.message, 'error');
+            }
+        }
+
         // Parse JSON input (handles both strict JSON and JavaScript object notation)
         function parseJsonInput() {
             const jsonInput = document.getElementById('jsonPaste').value.trim();
@@ -1555,7 +1728,28 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
         }
 
         // Populate form with recipe data
-        function populateForm(recipe) {
+        function populateForm(recipe, populateAllFields = false) {
+            // If populateAllFields is true, ensure all fields are present (for complete recipe loading)
+            if (populateAllFields) {
+                const completeRecipe = {
+                    id: '',
+                    title: '',
+                    provider: '',
+                    reference: '',
+                    pageNumber: '',
+                    servings: '',
+                    category: '',
+                    meal: '',
+                    cuisine: '',
+                    description: '',
+                    image: '',
+                    ingredients: '',
+                    instructions: '',
+                    ...recipe // Override with actual recipe data
+                };
+                recipe = completeRecipe;
+            }
+            
             // Only update fields that are explicitly provided in the input JSON
             
             if ('id' in recipe) {
@@ -1600,7 +1794,6 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             
             if ('image' in recipe) {
                 document.getElementById('image').value = recipe.image || '';
-                // Update image preview only if image field was provided
                 updateImagePreview();
             }
             
@@ -1653,6 +1846,8 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 }
                 
                 document.getElementById('ingredients').value = ingredientText.trim();
+            } else if (populateAllFields) {
+                document.getElementById('ingredients').value = '';
             }
             
             // Handle instructions - only if provided
@@ -1702,6 +1897,8 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
                 }
                 
                 document.getElementById('instructions').value = instructionText.trim();
+            } else if (populateAllFields) {
+                document.getElementById('instructions').value = '';
             }
         }
 
@@ -2011,7 +2208,7 @@ VIKTIGE MERKNADER: - Tittel og porsjoner er PÅKREVD - I beskrivelsen skal vi ik
             // Save current scroll positions before switching
             saveScrollPositions();
             
-            populateForm(recipe);
+            populateForm(recipe, true); // <- Pass true to populate all fields
             updateActiveRecipe();
             
             // Restore the saved scroll positions
