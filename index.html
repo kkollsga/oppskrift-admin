@@ -594,9 +594,9 @@ class Config {
         'default': 'images/low/'
     };
     
-    static DEFAULT_CATEGORIES = ['Brød', 'Bakverk', 'Kake', 'Grateng', 'Gryte', 'Kjeks', 'Grøt', 'Suppe', 'Salat', 'Kjøttkaker'];
-    static DEFAULT_MEALS = ['Frokost', 'Lunsj', 'Middag', 'Dessert', 'Snacks', 'Tilbehør'];
-    static DEFAULT_CUISINES = ['Norsk', 'Italiensk', 'Skandinavisk', 'Internasjonal', 'Asiatisk', 'Meksikansk', 'Fransk'];
+    static DEFAULT_CATEGORIES = [];
+    static DEFAULT_MEALS = [];
+    static DEFAULT_CUISINES = [];
 }
 
 class FilterManager {
@@ -988,6 +988,18 @@ class RecipeManager {
                     return (a.title || '').localeCompare(b.title || '');
                 });
                 break;
+        }
+        
+        return recipes;
+    }
+
+    // ADD THIS METHOD - This was missing or not properly implemented
+    getFilteredRecipes() {
+        let recipes = this.getSortedRecipes();
+        
+        // Apply filters if FilterManager exists
+        if (app.filterManager) {
+            recipes = recipes.filter(recipe => app.filterManager.isRecipeVisible(recipe));
         }
         
         return recipes;
@@ -2304,7 +2316,6 @@ class ImportExportManager {
     }
 
     async exportDatabase(method) {
-        // Use filtered recipes instead of all sorted recipes
         const recipes = app.recipeManager.getFilteredRecipes();
         
         if (recipes.length === 0) {
@@ -2331,11 +2342,9 @@ class ImportExportManager {
             try {
                 await navigator.clipboard.writeText(jsonContent);
                 const convertEnabled = document.getElementById('convertPngToJpg').checked;
-                let message = `${recipes.length} oppskrifter kopiert til utklippstavlen!`;
-                
-                if (hasActiveFilters) {
-                    message = `${recipes.length} filtrerte oppskrifter kopiert til utklippstavlen!`;
-                }
+                let message = hasActiveFilters ? 
+                    `${recipes.length} filtrerte oppskrifter kopiert til utklippstavlen!` :
+                    `${recipes.length} oppskrifter kopiert til utklippstavlen!`;
                 
                 if (convertEnabled) {
                     message += ` (.png → .jpg konvertering aktivert)`;
@@ -2353,11 +2362,9 @@ class ImportExportManager {
                 document.body.removeChild(textarea);
                 
                 const convertEnabled = document.getElementById('convertPngToJpg').checked;
-                let message = `${recipes.length} oppskrifter kopiert til utklippstavlen!`;
-                
-                if (hasActiveFilters) {
-                    message = `${recipes.length} filtrerte oppskrifter kopiert til utklippstavlen!`;
-                }
+                let message = hasActiveFilters ? 
+                    `${recipes.length} filtrerte oppskrifter kopiert til utklippstavlen!` :
+                    `${recipes.length} oppskrifter kopiert til utklippstavlen!`;
                 
                 if (convertEnabled) {
                     message += ` (.png → .jpg konvertering aktivert)`;
@@ -2371,7 +2378,6 @@ class ImportExportManager {
             const a = document.createElement('a');
             a.href = url;
             
-            // Add filter indication to filename if filters are active
             const dateStr = new Date().toISOString().split('T')[0];
             const filename = hasActiveFilters ? 
                 `recipes_filtered_${dateStr}.json` : 
@@ -2384,11 +2390,9 @@ class ImportExportManager {
             URL.revokeObjectURL(url);
             
             const convertEnabled = document.getElementById('convertPngToJpg').checked;
-            let message = `${recipes.length} oppskrifter eksportert til fil!`;
-            
-            if (hasActiveFilters) {
-                message = `${recipes.length} filtrerte oppskrifter eksportert til fil!`;
-            }
+            let message = hasActiveFilters ? 
+                `${recipes.length} filtrerte oppskrifter eksportert til fil!` :
+                `${recipes.length} oppskrifter eksportert til fil!`;
             
             if (convertEnabled) {
                 message += ` (.png → .jpg konvertering aktivert)`;
@@ -3129,12 +3133,6 @@ class RecipeApp {
         document.getElementById('importModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 app.importExportManager.closeImportModal();
-            }
-        });
-        
-        document.getElementById('taxonomyModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                app.taxonomyManager.closeModal();
             }
         });
         
