@@ -2249,7 +2249,21 @@ class ImportExportManager {
         const deleteExisting = document.getElementById('deleteExistingRecipes').checked;
         
         try {
-            const recipes = Array.isArray(this.pendingImportData) ? this.pendingImportData : [this.pendingImportData];
+            // Handle new format: {"recipes": [...]}
+            let recipesData;
+            
+            if (this.pendingImportData.recipes && Array.isArray(this.pendingImportData.recipes)) {
+                // New format with recipes wrapper
+                recipesData = this.pendingImportData.recipes;
+            } else if (Array.isArray(this.pendingImportData)) {
+                // Direct array format (for backwards compatibility during transition)
+                recipesData = this.pendingImportData;
+            } else if (this.pendingImportData.title) {
+                // Single recipe object
+                recipesData = [this.pendingImportData];
+            } else {
+                throw new Error('Ugyldig dataformat. Forventet format: {"recipes": [...]}');
+            }
             
             if (deleteExisting) {
                 app.recipeManager.recipeDatabase = {};
@@ -2258,7 +2272,7 @@ class ImportExportManager {
             let newCount = 0;
             let updatedCount = 0;
             
-            recipes.forEach(recipe => {
+            recipesData.forEach(recipe => {
                 if (recipe.title) {
                     if (recipe.id && app.recipeManager.recipeDatabase[recipe.id]) {
                         app.recipeManager.recipeDatabase[recipe.id] = recipe;
@@ -2332,11 +2346,12 @@ class ImportExportManager {
         
         const processedRecipes = recipes.map(recipe => this.convertImageExtensions(recipe));
         
+        // Create properly indented JSON with the new structure
         const compactJson = processedRecipes.map(recipe => 
-            JSON.stringify(recipe)
+            '    ' + JSON.stringify(recipe)  // 4 spaces indentation for each recipe
         ).join(',\n');
         
-        const jsonContent = '[\n' + compactJson + '\n]';
+        const jsonContent = '{\n  "recipes": [\n' + compactJson + '\n  ]\n}';
         
         if (method === 'clipboard') {
             try {
@@ -3156,12 +3171,26 @@ class RecipeApp {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    this.importExportManager.pendingImportData = JSON.parse(e.target.result);
+                    const parsedData = JSON.parse(e.target.result);
+                    
+                    // Handle new format
+                    let recipesArray;
+                    if (parsedData.recipes && Array.isArray(parsedData.recipes)) {
+                        recipesArray = parsedData.recipes;
+                        this.importExportManager.pendingImportData = parsedData;
+                    } else if (Array.isArray(parsedData)) {
+                        recipesArray = parsedData;
+                        this.importExportManager.pendingImportData = parsedData;
+                    } else if (parsedData.title) {
+                        recipesArray = [parsedData];
+                        this.importExportManager.pendingImportData = parsedData;
+                    } else {
+                        throw new Error('Ugyldig format. Forventet: {"recipes": [...]}');
+                    }
+                    
                     document.getElementById('confirmImportBtn').disabled = false;
                     
-                    const recipes = Array.isArray(this.importExportManager.pendingImportData) ? 
-                        this.importExportManager.pendingImportData : [this.importExportManager.pendingImportData];
-                    const validRecipes = recipes.filter(r => r.title);
+                    const validRecipes = recipesArray.filter(r => r.title);
                     document.getElementById('selectedFileName').textContent = 
                         `${file.name} (${validRecipes.length} oppskrifter)`;
                 } catch (err) {
